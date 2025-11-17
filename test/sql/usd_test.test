@@ -1,0 +1,11 @@
+# name: test/sql/usd_test.test
+# description: Test usd_test() function
+# group: [usd]
+
+require usd
+
+query II
+SELECT * FROM usd_test();
+----
+DuckDB USD Extension - Phase 0	0.1.0
+

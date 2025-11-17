@@ -9,18 +9,35 @@ namespace duckdb {
 struct UsdTestFunctionData : public TableFunctionData {
 };
 
+struct UsdTestGlobalState : public GlobalTableFunctionState {
+    UsdTestGlobalState() : finished(false) {
+    }
+    bool finished;
+};
+
 static unique_ptr<FunctionData> UsdTestBind(ClientContext &context, TableFunctionBindInput &input,
                                              vector<LogicalType> &return_types, vector<string> &names) {
     names.emplace_back("message");
     return_types.emplace_back(LogicalType::VARCHAR);
-    
+
     names.emplace_back("version");
     return_types.emplace_back(LogicalType::VARCHAR);
-    
+
     return make_uniq<UsdTestFunctionData>();
 }
 
+static unique_ptr<GlobalTableFunctionState> UsdTestInit(ClientContext &context, TableFunctionInitInput &input) {
+    return make_uniq<UsdTestGlobalState>();
+}
+
 static void UsdTestFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
+    auto &state = data_p.global_state->Cast<UsdTestGlobalState>();
+
+    if (state.finished) {
+        // Already returned data
+        return;
+    }
+
     idx_t row_count = 1;
     output.SetCardinality(row_count);
 
@@ -29,11 +46,13 @@ static void UsdTestFunction(ClientContext &context, TableFunctionInput &data_p, 
 
     message_vector[0] = StringVector::AddString(output.data[0], "DuckDB USD Extension - Phase 0");
     version_vector[0] = StringVector::AddString(output.data[1], "0.1.0");
+
+    state.finished = true;
 }
 
 static void LoadInternal(ExtensionLoader &loader) {
     // Register usd_test() table function
-    TableFunction usd_test_func("usd_test", {}, UsdTestFunction, UsdTestBind);
+    TableFunction usd_test_func("usd_test", {}, UsdTestFunction, UsdTestBind, UsdTestInit);
     loader.RegisterFunction(usd_test_func);
 }
 

@@ -1,9 +1,6 @@
 {
   "dependencies": [
-    "vcpkg-cmake",
-    "usd",
-    "boost-filesystem",
-    "tbb"
+    "vcpkg-cmake"
   ],
   "vcpkg-configuration": {
     "registries": [

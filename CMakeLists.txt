@@ -22,15 +22,8 @@ set(EXTENSION_SOURCES src/usd_extension.cpp)
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
-# Find dependencies via vcpkg
-find_package(usd CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS filesystem)
-find_package(TBB CONFIG REQUIRED)
-
-# Link dependencies
-# USD exports 'usd' target
-target_link_libraries(${EXTENSION_NAME} usd Boost::filesystem TBB::tbb)
-target_link_libraries(${LOADABLE_EXTENSION_NAME} usd Boost::filesystem TBB::tbb)
+# Phase 0: No external dependencies yet - just validate build system
+# Dependencies will be added in Phase 1
 
 # Install static library
 install(

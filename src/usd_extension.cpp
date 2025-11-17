@@ -1,7 +1,7 @@
+#include "usd_extension.hpp"
 #include "duckdb.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/function/table_function.hpp"
-#include "duckdb/main/extension_util.hpp"
 
 namespace duckdb {
 
@@ -21,34 +21,24 @@ static unique_ptr<FunctionData> UsdTestBind(ClientContext &context, TableFunctio
 }
 
 static void UsdTestFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
-    auto &data = data_p.bind_data->CastNoConst<UsdTestFunctionData>();
-    
-    if (data_p.local_state) {
-        // Already returned data
-        return;
-    }
-    
     idx_t row_count = 1;
     output.SetCardinality(row_count);
-    
-    auto &message_vector = FlatVector::GetData<string_t>(output.data[0]);
-    auto &version_vector = FlatVector::GetData<string_t>(output.data[1]);
-    
+
+    auto message_vector = FlatVector::GetData<string_t>(output.data[0]);
+    auto version_vector = FlatVector::GetData<string_t>(output.data[1]);
+
     message_vector[0] = StringVector::AddString(output.data[0], "DuckDB USD Extension - Phase 0");
     version_vector[0] = StringVector::AddString(output.data[1], "0.1.0");
-    
-    // Mark that we've returned data
-    data_p.local_state = (void*)1;
 }
 
-static void LoadInternal(DatabaseInstance &instance) {
+static void LoadInternal(ExtensionLoader &loader) {
     // Register usd_test() table function
     TableFunction usd_test_func("usd_test", {}, UsdTestFunction, UsdTestBind);
-    ExtensionUtil::RegisterFunction(instance, usd_test_func);
+    loader.RegisterFunction(usd_test_func);
 }
 
-void UsdExtension::Load(DuckDB &db) {
-    LoadInternal(*db.instance);
+void UsdExtension::Load(ExtensionLoader &loader) {
+    LoadInternal(loader);
 }
 
 std::string UsdExtension::Name() {
@@ -65,22 +55,12 @@ std::string UsdExtension::Version() const {
 
 } // namespace duckdb
 
-// Extension entry point
 extern "C" {
 
-DUCKDB_EXTENSION_API void usd_init(duckdb::DatabaseInstance &db) {
-    duckdb::DuckDB db_wrapper(db);
-    db_wrapper.LoadExtension<duckdb::UsdExtension>();
-}
-
-DUCKDB_EXTENSION_API const char *usd_version() {
-    return duckdb::DuckDB::LibraryVersion();
+DUCKDB_CPP_EXTENSION_ENTRY(usd, loader) {
+    duckdb::LoadInternal(loader);
 }
 
 }
-
-#ifndef DUCKDB_EXTENSION_MAIN
-#error DUCKDB_EXTENSION_MAIN not defined
-#endif
 
 

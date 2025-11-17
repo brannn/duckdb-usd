@@ -1,0 +1,80 @@
+# Exclude current workspace directories
+/assets/
+/coding-agents/
+/planning/
+
+# Build directories
+/build/
+/out/
+/dist/
+
+# vcpkg
+/vcpkg/
+/vcpkg_installed/
+
+# DuckDB extension build artifacts
+*.duckdb_extension
+*.duckdb_extension.so
+*.duckdb_extension.dylib
+*.duckdb_extension.dll
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+!extension_config.cmake
+!vcpkg.json
+
+# Compiled Object files
+*.o
+*.obj
+*.lo
+*.slo
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.a
+*.lib
+*.la
+
+# Executables
+*.exe
+*.out
+*.app
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test artifacts
+test/*.log
+test/data/*.duckdb
+test/data/*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+venv/
+env/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+

@@ -1,6 +1,14 @@
 {
+  "name": "duckdb-usd-extension",
+  "version": "0.1.0",
   "dependencies": [
-    "vcpkg-cmake"
+    "vcpkg-cmake",
+    {
+      "name": "usd",
+      "version>=": "25.8"
+    },
+    "boost-filesystem",
+    "tbb"
   ],
   "vcpkg-configuration": {
     "registries": [

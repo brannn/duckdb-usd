@@ -1,4 +1,5 @@
 #include "usd_extension.hpp"
+#include "usd_prims.hpp"
 #include "duckdb.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/function/table_function.hpp"
@@ -54,6 +55,10 @@ static void LoadInternal(ExtensionLoader &loader) {
     // Register usd_test() table function
     TableFunction usd_test_func("usd_test", {}, UsdTestFunction, UsdTestBind, UsdTestInit);
     loader.RegisterFunction(usd_test_func);
+
+    // Register usd_prims() table function
+    auto usd_prims_func = UsdPrimsFunction::GetFunction();
+    loader.RegisterFunction(usd_prims_func);
 }
 
 void UsdExtension::Load(ExtensionLoader &loader) {

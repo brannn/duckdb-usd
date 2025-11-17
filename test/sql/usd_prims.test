@@ -1,0 +1,95 @@
+# name: test/sql/usd_prims.test
+# description: Test usd_prims table function with all metadata columns
+# group: [usd]
+
+require usd
+
+statement ok
+PRAGMA enable_verification
+
+# Test basic usd_prims function with all columns
+query IIIIIII
+SELECT prim_path, parent_path, name, prim_type, kind, active, instanceable
+FROM usd_prims('test/data/simple_scene.usda')
+ORDER BY prim_path;
+----
+/World	/	World	Xform	(empty)	true	false
+/World/Cube	/World	Cube	Cube	(empty)	true	false
+/World/Cylinder	/World	Cylinder	Cylinder	(empty)	true	false
+/World/Group	/World	Group	Xform	(empty)	true	false
+/World/Group/Mesh	/World/Group	Mesh	Mesh	(empty)	true	false
+/World/Sphere	/World	Sphere	Sphere	(empty)	true	false
+
+# Test counting prims
+query I
+SELECT COUNT(*) FROM usd_prims('test/data/simple_scene.usda');
+----
+6
+
+# Test filtering by prim_type
+query I
+SELECT prim_path FROM usd_prims('test/data/simple_scene.usda') WHERE prim_type = 'Xform' ORDER BY prim_path;
+----
+/World
+/World/Group
+
+# Test grouping by prim_type
+query II
+SELECT prim_type, COUNT(*) as count FROM usd_prims('test/data/simple_scene.usda') GROUP BY prim_type ORDER BY count DESC, prim_type;
+----
+Xform	2
+Cube	1
+Cylinder	1
+Mesh	1
+Sphere	1
+
+# Test filtering by path pattern
+query I
+SELECT COUNT(*) FROM usd_prims('test/data/simple_scene.usda') WHERE prim_path LIKE '/World/%';
+----
+5
+
+# Test selecting only specific columns
+query I
+SELECT prim_type FROM usd_prims('test/data/simple_scene.usda') WHERE prim_path = '/World/Cube';
+----
+Cube
+
+# Test with non-existent file
+statement error
+SELECT * FROM usd_prims('test/data/nonexistent.usda');
+----
+
+# Test parent_path column
+query I
+SELECT name FROM usd_prims('test/data/simple_scene.usda') WHERE parent_path = '/World' ORDER BY name;
+----
+Cube
+Cylinder
+Group
+Sphere
+
+# Test name column
+query II
+SELECT prim_path, prim_type FROM usd_prims('test/data/simple_scene.usda') WHERE name = 'Mesh';
+----
+/World/Group/Mesh	Mesh
+
+# Test active column (all should be true in our test file)
+query I
+SELECT COUNT(*) FROM usd_prims('test/data/simple_scene.usda') WHERE active = true;
+----
+6
+
+# Test instanceable column (all should be false in our test file)
+query I
+SELECT COUNT(*) FROM usd_prims('test/data/simple_scene.usda') WHERE instanceable = false;
+----
+6
+
+# Test kind column (should be empty for all prims in simple scene)
+query I
+SELECT COUNT(*) FROM usd_prims('test/data/simple_scene.usda') WHERE kind = '';
+----
+6
+

@@ -1,0 +1,96 @@
+extension:
+  name: usd
+  description: Query Universal Scene Description (USD) files using SQL
+  version: 0.1.0
+  language: C++
+  build: cmake
+  license: MIT
+  maintainers:
+    - brannn
+
+  # USD extension requires vcpkg for OpenUSD dependencies
+  vcpkg_commit: "a42af01b72c28a8e1d7b48107b33e4f286a55ef6"
+
+repo:
+  github: Purple-People-Eaters-Inc/duckdb-usd
+  ref: main
+
+docs:
+  hello_world: |
+    -- Install and load the extension
+    INSTALL usd FROM community;
+    LOAD usd;
+    
+    -- Query prims from a USD file
+    SELECT prim_path, prim_type, active
+    FROM usd_prims('scene.usda')
+    WHERE prim_type = 'Xform'
+    LIMIT 5;
+    
+    -- Analyze spatial transforms
+    SELECT prim_path, x, y, z
+    FROM usd_xforms('scene.usda')
+    WHERE x > 0 AND y > 0;
+
+  extended_description: |
+    The USD extension enables SQL-based querying and analysis of Universal Scene Description (USD) files, 
+    the industry-standard format for 3D scene interchange developed by Pixar. This extension is particularly 
+    useful for technical designers, data engineers, and infrastructure teams working with 3D asset pipelines, 
+    datacenter visualization, or any USD-based workflows.
+    
+    ## Key Features
+    
+    - **Query Scene Hierarchy**: Extract prim paths, types, and metadata from USD files
+    - **Property Introspection**: Analyze attributes and relationships across your USD assets
+    - **Spatial Analysis**: Query world-space transforms for geospatial and proximity analysis
+    - **Relationship Mapping**: Traverse and analyze USD relationships for dependency graphs
+    - **High Performance**: Efficiently process large USD files (tested with 155K+ prims)
+    
+    ## Table Functions
+    
+    The extension provides four table functions:
+    
+    - `usd_prims(file_path)` - Returns all prims with metadata (path, type, kind, active, instanceable)
+    - `usd_properties(file_path)` - Returns all properties with type information and default values
+    - `usd_relationships(file_path)` - Returns all relationships with target expansion
+    - `usd_xforms(file_path)` - Returns world-space transforms (x, y, z coordinates)
+    
+    ## Example Use Cases
+    
+    **Datacenter Infrastructure Analysis:**
+    ```sql
+    -- Find all power distribution units and their locations
+    SELECT p.prim_path, p.kind, x.x, x.y, x.z
+    FROM usd_prims('datacenter.usd') p
+    JOIN usd_xforms('datacenter.usd') x ON p.prim_path = x.prim_path
+    WHERE p.prim_path LIKE '%/PDU_%';
+    ```
+    
+    **Asset Validation:**
+    ```sql
+    -- Find inactive prims that might indicate issues
+    SELECT prim_path, prim_type, parent_path
+    FROM usd_prims('scene.usd')
+    WHERE active = false;
+    ```
+    
+    **Dependency Analysis:**
+    ```sql
+    -- Analyze relationship dependencies
+    SELECT r.prim_path, r.rel_name, r.target_path
+    FROM usd_relationships('scene.usd') r
+    WHERE r.rel_name = 'material:binding';
+    ```
+    
+    For comprehensive documentation, see the [User Guide](https://github.com/Purple-People-Eaters-Inc/duckdb-usd/blob/main/USER_GUIDE.md).
+    
+    ## Platform Support
+    
+    The extension supports Linux, macOS, and Windows on both x86_64 and ARM64 architectures, plus WebAssembly.
+    
+    ## Links
+    
+    - [GitHub Repository](https://github.com/Purple-People-Eaters-Inc/duckdb-usd)
+    - [User Guide](https://github.com/Purple-People-Eaters-Inc/duckdb-usd/blob/main/USER_GUIDE.md)
+    - [OpenUSD Documentation](https://openusd.org)
+

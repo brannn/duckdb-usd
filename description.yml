@@ -9,7 +9,10 @@ extension:
     - brannn
 
   # USD extension requires vcpkg for OpenUSD dependencies
-  vcpkg_commit: "a42af01b72c28a8e1d7b48107b33e4f286a55ef6"
+  vcpkg_commit: "5e5d0e1cd7785623065e77eff011afdeec1a3574"
+
+  # OpenUSD has complex build requirements, exclude platforms with build issues
+  excluded_platforms: "linux_amd64_musl;wasm_eh;wasm_mvp"
 
 repo:
   github: Purple-People-Eaters-Inc/duckdb-usd
@@ -85,8 +88,8 @@ docs:
     For comprehensive documentation, see the [User Guide](https://github.com/Purple-People-Eaters-Inc/duckdb-usd/blob/main/USER_GUIDE.md).
     
     ## Platform Support
-    
-    The extension supports Linux, macOS, and Windows on both x86_64 and ARM64 architectures, plus WebAssembly.
+
+    The extension supports Linux, macOS, and Windows on both x86_64 and ARM64 architectures.
     
     ## Links
     

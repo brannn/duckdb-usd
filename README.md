@@ -3,7 +3,7 @@
 [![CI](https://github.com/Purple-People-Eaters-Inc/duckdb-usd/actions/workflows/MainDistributionPipeline.yml/badge.svg)](https://github.com/Purple-People-Eaters-Inc/duckdb-usd/actions/workflows/MainDistributionPipeline.yml)
 [![DuckDB Version](https://img.shields.io/badge/DuckDB-v1.4.2-blue)](https://github.com/duckdb/duckdb/releases/tag/v1.4.2)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20WebAssembly-lightgrey)](https://github.com/Purple-People-Eaters-Inc/duckdb-usd/actions)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)](https://github.com/Purple-People-Eaters-Inc/duckdb-usd/actions)
 
 A DuckDB extension that enables SQL-based querying of Universal Scene Description (USD) files. This extension provides table functions for extracting scene graph metadata, property information, relationship graphs, and spatial transforms from USD files.
 

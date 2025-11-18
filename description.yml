@@ -9,7 +9,7 @@ extension:
     - brannn
 
   # USD extension requires vcpkg for OpenUSD dependencies
-  vcpkg_commit: "ab014a5f9e5eb67e10b5a4e36e9b9e64a2d67ba0"
+  vcpkg_commit: "0804e3b55b7e435c593707071052363fa876f170"
 
   # OpenUSD has complex build requirements, exclude platforms with build issues
   excluded_platforms: "linux_amd64_musl;wasm_eh;wasm_mvp"

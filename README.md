@@ -40,20 +40,16 @@ The extension is designed for analyzing large-scale USD files containing facilit
 ### Loading the Extension
 
 ```sql
-LOAD './build/release/extension/usd/usd.duckdb_extension';
-```
-
-For unsigned extensions during development:
-
-```bash
-duckdb -unsigned
+INSTALL usd FROM community;
+LOAD usd;
 ```
 
 ## Quick Start
 
 ```sql
--- Load the extension
-LOAD './build/release/extension/usd/usd.duckdb_extension';
+-- Install and load the extension
+INSTALL usd FROM community;
+LOAD usd;
 
 -- Query all prims in a USD file
 SELECT prim_path, prim_type, kind 

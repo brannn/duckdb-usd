@@ -22,6 +22,7 @@ find_package(pxr CONFIG REQUIRED)
 set(EXTENSION_SOURCES
     src/usd_extension.cpp
     src/usd_prims.cpp
+    src/usd_properties.cpp
     src/usd_helpers.cpp
 )
 

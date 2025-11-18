@@ -1,0 +1,60 @@
+# name: test/sql/usd_properties.test
+# description: Test usd_properties table function - validates property introspection for USD metadata governance
+# group: [usd]
+
+require usd
+
+# Use case: Find all geometry prims with custom size/dimension attributes
+# This is useful for validating that all geometry has proper sizing metadata
+query IIII
+SELECT prim_path, prop_name, usd_type_name, default_value
+FROM usd_properties('test/data/simple_scene.usda')
+WHERE prop_name IN ('size', 'radius', 'height') AND prop_kind = 'attribute'
+ORDER BY prim_path, prop_name;
+----
+/World/Cube	size	double	2
+/World/Cylinder	height	double	3
+/World/Cylinder	radius	double	0.5
+/World/Sphere	radius	double	1.5
+
+# Use case: Distinguish between attributes and relationships
+# Critical for understanding scene graph connections vs data
+query II
+SELECT prop_kind, COUNT(*) as count
+FROM usd_properties('test/data/simple_scene.usda')
+GROUP BY prop_kind
+ORDER BY prop_kind;
+----
+attribute	59
+relationship	6
+
+# Use case: Identify array-typed attributes that may need special handling
+# Array attributes often represent per-vertex or per-face data
+query III
+SELECT prim_path, prop_name, usd_type_name
+FROM usd_properties('test/data/simple_scene.usda')
+WHERE is_array = true AND prim_path = '/World/Cube'
+ORDER BY prop_name;
+----
+/World/Cube	extent	float3[]
+/World/Cube	primvars:displayColor	color3f[]
+/World/Cube	primvars:displayOpacity	float[]
+/World/Cube	xformOpOrder	token[]
+
+# Use case: Join properties with prims to find geometry without required attributes
+# This validates metadata completeness - all geometry should have extent
+query II
+SELECT p.prim_path, p.prim_type
+FROM usd_prims('test/data/simple_scene.usda') p
+WHERE p.prim_type IN ('Cube', 'Sphere', 'Cylinder', 'Mesh')
+  AND NOT EXISTS (
+    SELECT 1 FROM usd_properties('test/data/simple_scene.usda') props
+    WHERE props.prim_path = p.prim_path AND props.prop_name = 'extent'
+  )
+ORDER BY p.prim_path;
+----
+
+# Use case: Invalid file handling
+statement error
+SELECT * FROM usd_properties('test/data/nonexistent.usda');
+

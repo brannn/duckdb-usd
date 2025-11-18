@@ -11,14 +11,14 @@ namespace duckdb {
 
 struct UsdPrimsBindData : public TableFunctionData {
     std::string file_path;
-    
+
     explicit UsdPrimsBindData(std::string path) : file_path(std::move(path)) {}
 };
 
 struct UsdPrimsGlobalState : public GlobalTableFunctionState {
     pxr::UsdStageRefPtr stage;
     std::unique_ptr<UsdPrimIterator> iterator;
-    
+
     UsdPrimsGlobalState() = default;
 };
 
@@ -68,13 +68,13 @@ static unique_ptr<FunctionData> UsdPrimsBind(ClientContext &context, TableFuncti
 static unique_ptr<GlobalTableFunctionState> UsdPrimsInit(ClientContext &context, TableFunctionInitInput &input) {
     auto &bind_data = input.bind_data->Cast<UsdPrimsBindData>();
     auto result = make_uniq<UsdPrimsGlobalState>();
-    
+
     // Open USD stage
     result->stage = UsdStageManager::OpenStage(bind_data.file_path);
-    
+
     // Create prim iterator
     result->iterator = make_uniq<UsdPrimIterator>(result->stage);
-    
+
     return std::move(result);
 }
 

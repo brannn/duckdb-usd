@@ -24,6 +24,7 @@ set(EXTENSION_SOURCES
     src/usd_prims.cpp
     src/usd_properties.cpp
     src/usd_relationships.cpp
+    src/usd_xforms.cpp
     src/usd_helpers.cpp
 )
 

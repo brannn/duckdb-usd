@@ -1,0 +1,119 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    upAxis = "Y"
+    metersPerUnit = 1
+)
+
+def Xform "World"
+{
+    # Origin point - no transform
+    def Cube "Origin" (
+        kind = "component"
+    )
+    {
+        double size = 1.0
+    }
+
+    # Translation only - moved 10 units along X axis
+    def Xform "Rack_A" (
+        kind = "component"
+    )
+    {
+        double3 xformOp:translate = (10, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    # Translation in 3D space - datacenter rack position
+    def Xform "Rack_B" (
+        kind = "component"
+    )
+    {
+        double3 xformOp:translate = (10, 0, 5)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    # Another rack for proximity testing
+    def Xform "Rack_C" (
+        kind = "component"
+    )
+    {
+        double3 xformOp:translate = (20, 0, 5)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    # Cooling unit - CRAC position
+    def Xform "CRAC_01" (
+        kind = "component"
+    )
+    {
+        double3 xformOp:translate = (15, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    # Rotation + Translation
+    def Xform "RotatedEquipment" (
+        kind = "component"
+    )
+    {
+        double3 xformOp:translate = (5, 2, 3)
+        double3 xformOp:rotateXYZ = (0, 45, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+    }
+
+    # Scale + Translation
+    def Xform "ScaledEquipment" (
+        kind = "component"
+    )
+    {
+        double3 xformOp:translate = (0, 5, 0)
+        double3 xformOp:scale = (2, 2, 2)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+
+    # Nested transforms - parent/child hierarchy
+    def Xform "DatacenterRow" (
+        kind = "group"
+    )
+    {
+        double3 xformOp:translate = (100, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        # Child inherits parent transform
+        def Xform "Rack_D" (
+            kind = "component"
+        )
+        {
+            double3 xformOp:translate = (0, 0, 5)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            # World position should be (100, 0, 5)
+        }
+
+        def Xform "Rack_E" (
+            kind = "component"
+        )
+        {
+            double3 xformOp:translate = (0, 0, 10)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            # World position should be (100, 0, 10)
+        }
+    }
+
+    # Non-Xformable prim (should be skipped)
+    def "NonXformable" (
+        kind = "component"
+    )
+    {
+        # This prim has no xformOp attributes
+    }
+
+    # Far away equipment for distance testing
+    def Xform "RemoteServer" (
+        kind = "component"
+    )
+    {
+        double3 xformOp:translate = (1000, 0, 1000)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+}
+

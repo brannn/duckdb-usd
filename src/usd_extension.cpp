@@ -2,6 +2,7 @@
 #include "usd_prims.hpp"
 #include "usd_properties.hpp"
 #include "usd_relationships.hpp"
+#include "usd_xforms.hpp"
 #include "duckdb.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/function/table_function.hpp"
@@ -69,6 +70,10 @@ static void LoadInternal(ExtensionLoader &loader) {
     // Register usd_relationships() table function
     auto usd_relationships_func = UsdRelationshipsFunction::GetFunction();
     loader.RegisterFunction(usd_relationships_func);
+
+    // Register usd_xforms() table function
+    auto usd_xforms_func = UsdXformsFunction::GetFunction();
+    loader.RegisterFunction(usd_xforms_func);
 }
 
 void UsdExtension::Load(ExtensionLoader &loader) {

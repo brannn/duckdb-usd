@@ -1,0 +1,75 @@
+# name: test/sql/usd_relationships.test
+# description: Test usd_relationships table function - validates relationship target expansion for graph analysis
+# group: [usd]
+
+require usd
+
+# Use case: Extract power topology - which PDUs power which racks
+# This is critical for datacenter power dependency analysis
+query II
+SELECT prim_path, target_path
+FROM usd_relationships('test/data/relationships_scene.usda')
+WHERE rel_name = 'powerSource'
+ORDER BY prim_path, target_path;
+----
+/World/Rack_01	/World/PDU_A
+/World/Rack_02	/World/PDU_B
+/World/Rack_03	/World/PDU_A
+/World/Rack_03	/World/PDU_B
+/World/Server_01	/World/PDU_A
+
+# Use case: Identify multi-target relationships (redundant power sources)
+# Critical for finding equipment with redundant power
+query III
+SELECT prim_path, rel_name, COUNT(*) as target_count
+FROM usd_relationships('test/data/relationships_scene.usda')
+GROUP BY prim_path, rel_name
+HAVING COUNT(*) > 1
+ORDER BY prim_path;
+----
+/World/Rack_03	powerSource	2
+
+# Use case: Verify target_index is correct for multi-target relationships
+# Ensures proper ordering of relationship targets
+query IIII
+SELECT prim_path, rel_name, target_path, target_index
+FROM usd_relationships('test/data/relationships_scene.usda')
+WHERE prim_path = '/World/Rack_03'
+ORDER BY target_index;
+----
+/World/Rack_03	powerSource	/World/PDU_A	0
+/World/Rack_03	powerSource	/World/PDU_B	1
+
+# Use case: Join relationships with prims to analyze graph structure
+# Find all equipment and what they're connected to
+query IIII
+SELECT r.prim_path, r.rel_name, r.target_path, p.kind as target_kind
+FROM usd_relationships('test/data/relationships_scene.usda') r
+JOIN usd_prims('test/data/relationships_scene.usda') p
+  ON r.target_path = p.prim_path
+WHERE r.rel_name = 'powerSource'
+ORDER BY r.prim_path;
+----
+/World/Rack_01	powerSource	/World/PDU_A	component
+/World/Rack_02	powerSource	/World/PDU_B	component
+/World/Rack_03	powerSource	/World/PDU_A	component
+/World/Rack_03	powerSource	/World/PDU_B	component
+/World/Server_01	powerSource	/World/PDU_A	component
+
+# Use case: Count total relationships per prim
+# Useful for finding highly connected nodes in the scene graph
+query II
+SELECT prim_path, COUNT(*) as relationship_count
+FROM usd_relationships('test/data/relationships_scene.usda')
+GROUP BY prim_path
+ORDER BY relationship_count DESC, prim_path;
+----
+/World/Server_01	2
+/World/Rack_01	1
+/World/Rack_02	1
+/World/Rack_03	2
+
+# Use case: Invalid file handling
+statement error
+SELECT * FROM usd_relationships('test/data/nonexistent.usda');
+

@@ -1,0 +1,54 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    upAxis = "Y"
+)
+
+def Xform "World"
+{
+    def "PDU_A" (
+        kind = "component"
+    )
+    {
+    }
+
+    def "PDU_B" (
+        kind = "component"
+    )
+    {
+    }
+
+    def "Rack_01" (
+        kind = "component"
+    )
+    {
+        rel powerSource = </World/PDU_A>
+    }
+
+    def "Rack_02" (
+        kind = "component"
+    )
+    {
+        rel powerSource = </World/PDU_B>
+    }
+
+    def "Rack_03" (
+        kind = "component"
+    )
+    {
+        # Multi-target relationship
+        rel powerSource = [
+            </World/PDU_A>,
+            </World/PDU_B>
+        ]
+    }
+
+    def "Server_01" (
+        kind = "component"
+    )
+    {
+        rel parent = </World/Rack_01>
+        rel powerSource = </World/PDU_A>
+    }
+}
+

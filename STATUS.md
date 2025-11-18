@@ -75,7 +75,7 @@
 
 **Documentation Files Created:**
 - `description.yml` - Extension registry descriptor with metadata, hello world example, and extended description
-- `EXAMPLES.md` - Comprehensive query library with 40+ practical examples organized by category
+- `COOKBOOK.md` - Comprehensive query library with 40+ practical examples organized by category
 - `CONTRIBUTING.md` - Complete development guide with setup, building, testing, and contribution guidelines
 
 **Documentation Coverage:**

@@ -435,7 +435,7 @@ python3 ../../duckdb/scripts/run_tests_one_by_one.py ./test/unittest "../../test
 
 - `README.md` - Overview and quick start
 - `USER_GUIDE.md` - Comprehensive usage guide
-- `EXAMPLES.md` - Query examples and patterns
+- `COOKBOOK.md` - Query examples and patterns
 - `CONTRIBUTING.md` - This file
 - `STATUS.md` - Project status (internal)
 
@@ -444,7 +444,7 @@ python3 ../../duckdb/scripts/run_tests_one_by_one.py ./test/unittest "../../test
 When adding features:
 1. Update function signatures in README.md
 2. Add comprehensive examples to USER_GUIDE.md
-3. Add practical queries to EXAMPLES.md
+3. Add practical queries to COOKBOOK.md
 4. Update description.yml if changing extension metadata
 
 ### Documentation Style

@@ -1,6 +1,6 @@
-# DuckDB USD Extension - Example Queries
+# DuckDB USD Extension - Query Cookbook
 
-This document provides a collection of practical SQL queries demonstrating the capabilities of the DuckDB USD extension.
+This cookbook provides a collection of practical SQL queries demonstrating the capabilities of the DuckDB USD extension.
 
 ## Table of Contents
 

@@ -14,10 +14,10 @@ concurrency:
 jobs:
   duckdb-stable-build:
     name: Build extension binaries
-    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v1.4.1
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v1.4.2
     with:
-      duckdb_version: v1.4.1
-      ci_tools_version: v1.4.1
+      duckdb_version: v1.4.2
+      ci_tools_version: v1.4.2
       extension_name: usd
       # OpenUSD has complex build requirements, exclude platforms that may have issues
       # Start with core platforms and expand as needed

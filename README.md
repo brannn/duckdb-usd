@@ -21,7 +21,7 @@ A DuckDB extension that enables SQL-based querying of Universal Scene Descriptio
 
 ## Overview
 
-The DuckDB USD Extension bridges the gap between USD's hierarchical scene description format and SQL's relational query capabilities. This enables data engineers and technical artists to analyze USD files using familiar SQL syntax without writing custom USD traversal code.
+The DuckDB USD Extension bridges the gap between USD's hierarchical scene description format and SQL's relational query capabilities. This enables data engineers and technical designers to analyze USD files using familiar SQL syntax without writing custom USD traversal code.
 
 The extension is designed for analyzing large-scale USD files containing facility layouts, equipment hierarchies, and spatial relationships. Common applications include datacenter infrastructure analysis, facility management, and asset validation workflows.
 
@@ -242,7 +242,7 @@ Tests are located in `test/sql/` and follow DuckDB's SQL test format.
 
 ## Contributing
 
-Contributions are welcome. Please ensure all changes include appropriate tests and follow the existing code style. See STATUS.md for current project status and known gaps.
+Contributions are welcome. Please ensure all changes include appropriate tests and follow the existing code style.
 
 ## License
 

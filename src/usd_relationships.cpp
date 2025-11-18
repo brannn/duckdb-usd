@@ -5,6 +5,7 @@
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usd/relationship.h>
 #include <pxr/usd/sdf/path.h>
+#include <filesystem>
 
 namespace duckdb {
 
@@ -38,9 +39,24 @@ static unique_ptr<FunctionData> UsdRelationshipsBind(ClientContext &context, Tab
 
     auto file_path = input.inputs[0].GetValue<string>();
 
+    // Check for empty path
+    if (file_path.empty() || file_path.find_first_not_of(" \t\n\r") == std::string::npos) {
+        throw BinderException("usd_relationships: file_path cannot be empty");
+    }
+
+    // Check if file exists
+    if (!std::filesystem::exists(file_path)) {
+        throw BinderException("usd_relationships: USD file not found: " + file_path);
+    }
+
+    // Check if it's a directory
+    if (std::filesystem::is_directory(file_path)) {
+        throw BinderException("usd_relationships: path is a directory, not a file: " + file_path);
+    }
+
     // Validate file extension
     if (!UsdStageManager::IsValidUsdFile(file_path)) {
-        throw InvalidInputException("File must have a USD extension (.usd, .usda, .usdc, .usdz)");
+        throw BinderException("usd_relationships: file must have a USD extension (.usd, .usda, .usdc, .usdz): " + file_path);
     }
 
     // Define output schema

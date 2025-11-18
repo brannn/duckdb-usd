@@ -6,6 +6,7 @@
 #include <pxr/usd/usd/prim.h>
 #include <pxr/usd/usd/modelAPI.h>
 #include <pxr/base/tf/token.h>
+#include <filesystem>
 
 namespace duckdb {
 
@@ -34,10 +35,25 @@ static unique_ptr<FunctionData> UsdPrimsBind(ClientContext &context, TableFuncti
     }
     
     auto file_path = input.inputs[0].ToString();
-    
-    // Validate USD file
+
+    // Check for empty path
+    if (file_path.empty() || file_path.find_first_not_of(" \t\n\r") == std::string::npos) {
+        throw BinderException("usd_prims: file_path cannot be empty");
+    }
+
+    // Check if file exists
+    if (!std::filesystem::exists(file_path)) {
+        throw BinderException("usd_prims: USD file not found: " + file_path);
+    }
+
+    // Check if it's a directory
+    if (std::filesystem::is_directory(file_path)) {
+        throw BinderException("usd_prims: path is a directory, not a file: " + file_path);
+    }
+
+    // Validate USD file extension
     if (!UsdStageManager::IsValidUsdFile(file_path)) {
-        throw BinderException("Invalid USD file: " + file_path);
+        throw BinderException("usd_prims: file must have a USD extension (.usd, .usda, .usdc, .usdz): " + file_path);
     }
     
     // Define output schema - all columns from Phase 2

@@ -1,0 +1,9 @@
+#usda 1.0
+(
+    doc = "Minimal USD scene with single prim, no properties"
+)
+
+def Xform "Root"
+{
+}
+

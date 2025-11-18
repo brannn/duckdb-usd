@@ -1,0 +1,138 @@
+# name: test/sql/usd_error_handling.test
+# description: Test error handling and invalid inputs for USD extension
+# group: [usd]
+
+require usd
+
+# Test: Non-existent file
+statement error
+SELECT * FROM usd_prims('test/data/does_not_exist.usda');
+----
+USD file not found
+
+# Test: Invalid file extension
+statement error
+SELECT * FROM usd_prims('test/data/not_a_usd_file.txt');
+----
+file must have a USD extension
+
+# Test: No arguments provided
+statement error
+SELECT * FROM usd_prims();
+----
+No function matches
+
+# Test: Too many arguments
+statement error
+SELECT * FROM usd_prims('file1.usd', 'file2.usd');
+----
+No function matches
+
+# Test: NULL file path
+statement error
+SELECT * FROM usd_prims(NULL);
+----
+USD file not found
+
+# Test: Integer instead of string
+statement error
+SELECT * FROM usd_prims(123);
+----
+No function matches
+
+# Test: usd_properties with non-existent file
+statement error
+SELECT * FROM usd_properties('test/data/missing.usda');
+----
+USD file not found
+
+# Test: usd_properties with invalid extension
+statement error
+SELECT * FROM usd_properties('README.md');
+----
+file must have a USD extension
+
+# Test: usd_properties with no arguments
+statement error
+SELECT * FROM usd_properties();
+----
+No function matches
+
+# Test: usd_properties with too many arguments
+statement error
+SELECT * FROM usd_properties('file1.usd', 'file2.usd');
+----
+No function matches
+
+# Test: usd_relationships with non-existent file
+statement error
+SELECT * FROM usd_relationships('test/data/missing.usda');
+----
+USD file not found
+
+# Test: usd_relationships with invalid extension
+statement error
+SELECT * FROM usd_relationships('test/data/simple_scene.txt');
+----
+file must have a USD extension
+
+# Test: usd_relationships with no arguments
+statement error
+SELECT * FROM usd_relationships();
+----
+No function matches
+
+# Test: usd_relationships with too many arguments
+statement error
+SELECT * FROM usd_relationships('file1.usd', 'file2.usd');
+----
+No function matches
+
+# Test: usd_xforms with non-existent file
+statement error
+SELECT * FROM usd_xforms('test/data/missing.usda');
+----
+USD file not found
+
+# Test: usd_xforms with invalid extension
+statement error
+SELECT * FROM usd_xforms('LICENSE');
+----
+file must have a USD extension
+
+# Test: usd_xforms with no arguments
+statement error
+SELECT * FROM usd_xforms();
+----
+No function matches
+
+# Test: usd_xforms with too many arguments
+statement error
+SELECT * FROM usd_xforms('file1.usd', 'file2.usd');
+----
+No function matches
+
+# Test: Empty string as file path
+statement error
+SELECT * FROM usd_prims('');
+----
+file_path cannot be empty
+
+# Test: Whitespace-only file path
+statement error
+SELECT * FROM usd_prims('   ');
+----
+file_path cannot be empty
+
+# Test: Relative path that doesn't exist
+statement error
+SELECT * FROM usd_prims('../nonexistent/file.usd');
+----
+USD file not found
+
+# Test: Directory instead of file
+statement error
+SELECT * FROM usd_prims('test/data/');
+----
+path is a directory
+

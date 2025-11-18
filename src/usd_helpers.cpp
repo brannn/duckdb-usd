@@ -21,14 +21,24 @@ pxr::UsdStageRefPtr UsdStageManager::OpenStage(const std::string &file_path) {
 }
 
 bool UsdStageManager::IsValidUsdFile(const std::string &file_path) {
+    // Check for empty or whitespace-only paths
+    if (file_path.empty() || file_path.find_first_not_of(" \t\n\r") == std::string::npos) {
+        return false;
+    }
+
     if (!std::filesystem::exists(file_path)) {
         return false;
     }
-    
+
+    // Check if it's a directory
+    if (std::filesystem::is_directory(file_path)) {
+        return false;
+    }
+
     // Check file extension
     std::filesystem::path path(file_path);
     std::string ext = path.extension().string();
-    
+
     // USD file extensions: .usd, .usda, .usdc, .usdz
     return (ext == ".usd" || ext == ".usda" || ext == ".usdc" || ext == ".usdz");
 }

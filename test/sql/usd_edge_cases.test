@@ -1,0 +1,171 @@
+# name: test/sql/usd_edge_cases.test
+# description: Test edge cases for USD extension table functions
+# group: [usd]
+
+require usd
+
+# Test: Empty USD file
+query I
+SELECT COUNT(*) FROM usd_prims('test/data/empty_scene.usda');
+----
+0
+
+# Test: Minimal USD file with single prim
+query I
+SELECT COUNT(*) FROM usd_prims('test/data/minimal_scene.usda');
+----
+1
+
+# Test: Minimal file - verify prim details
+query IIIIIII
+SELECT prim_path, parent_path, name, prim_type, kind, active, instanceable
+FROM usd_prims('test/data/minimal_scene.usda');
+----
+/Root	/	Root	Xform	(empty)	true	false
+
+# Test: Empty file returns no properties
+query I
+SELECT COUNT(*) FROM usd_properties('test/data/empty_scene.usda');
+----
+0
+
+# Test: Minimal file has built-in properties
+query I
+SELECT COUNT(*)
+FROM usd_properties('test/data/minimal_scene.usda')
+WHERE prop_kind = 'attribute';
+----
+3
+
+# Test: Empty file returns no relationships
+query I
+SELECT COUNT(*) FROM usd_relationships('test/data/empty_scene.usda');
+----
+0
+
+# Test: Minimal file returns no relationships
+query I
+SELECT COUNT(*) FROM usd_relationships('test/data/minimal_scene.usda');
+----
+0
+
+# Test: Empty file returns no transforms
+query I
+SELECT COUNT(*) FROM usd_xforms('test/data/empty_scene.usda');
+----
+0
+
+# Test: Minimal file returns single transform
+query I
+SELECT COUNT(*) FROM usd_xforms('test/data/minimal_scene.usda');
+----
+1
+
+# Test: Minimal file transform at origin
+query IIII
+SELECT prim_path, x, y, z
+FROM usd_xforms('test/data/minimal_scene.usda');
+----
+/Root	0.0	0.0	0.0
+
+# Test: Query non-existent prim path
+query I
+SELECT COUNT(*) 
+FROM usd_prims('test/data/simple_scene.usda')
+WHERE prim_path = '/NonExistent/Path';
+----
+0
+
+# Test: Filter with LIKE pattern that matches nothing
+query I
+SELECT COUNT(*)
+FROM usd_prims('test/data/simple_scene.usda')
+WHERE prim_path LIKE '%/DoesNotExist/%';
+----
+0
+
+# Test: Properties with empty default values exist
+query I
+SELECT COUNT(*)
+FROM usd_properties('test/data/simple_scene.usda')
+WHERE default_value = '';
+----
+27
+
+# Test: Join prims with properties
+query I
+SELECT COUNT(*)
+FROM usd_prims('test/data/minimal_scene.usda') p
+LEFT JOIN usd_properties('test/data/minimal_scene.usda') pr
+  ON p.prim_path = pr.prim_path
+WHERE pr.prop_name IS NOT NULL;
+----
+4
+
+# Test: Relationships with no targets
+query I
+SELECT COUNT(*)
+FROM usd_relationships('test/data/simple_scene.usda')
+WHERE target_path = '';
+----
+0
+
+# Test: Xforms with zero translation
+query I
+SELECT COUNT(*)
+FROM usd_xforms('test/data/simple_scene.usda')
+WHERE x = 0.0 AND y = 0.0 AND z = 0.0;
+----
+6
+
+# Test: Xforms with no scale or rotation
+query I
+SELECT COUNT(*)
+FROM usd_xforms('test/data/simple_scene.usda')
+WHERE has_scale = false AND has_rotation = false;
+----
+6
+
+# Test: Large LIMIT value doesn't cause issues
+query I
+SELECT COUNT(*) FROM (
+    SELECT * FROM usd_prims('test/data/simple_scene.usda')
+    LIMIT 1000000
+);
+----
+6
+
+# Test: OFFSET beyond result set
+query I
+SELECT COUNT(*) FROM (
+    SELECT * FROM usd_prims('test/data/simple_scene.usda')
+    OFFSET 1000
+);
+----
+0
+
+# Test: Empty result set aggregation
+query III
+SELECT COUNT(*), MAX(LENGTH(prim_path)), MIN(LENGTH(prim_path))
+FROM usd_prims('test/data/empty_scene.usda');
+----
+0	NULL	NULL
+
+# Test: String operations on empty results
+query I
+SELECT COUNT(*)
+FROM usd_prims('test/data/empty_scene.usda')
+WHERE prim_path LIKE '%test%';
+----
+0
+
+# Test: Numeric operations on transforms
+query III
+SELECT 
+    ROUND(AVG(x), 2) as avg_x,
+    ROUND(AVG(y), 2) as avg_y,
+    ROUND(AVG(z), 2) as avg_z
+FROM usd_xforms('test/data/simple_scene.usda');
+----
+0.0	0.0	0.0
+

@@ -7,6 +7,7 @@
 #include <pxr/usd/usdGeom/xformCache.h>
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/base/gf/vec3d.h>
+#include <filesystem>
 
 namespace duckdb {
 
@@ -36,9 +37,24 @@ static unique_ptr<FunctionData> UsdXformsBind(ClientContext &context, TableFunct
 
     auto file_path = input.inputs[0].GetValue<string>();
 
+    // Check for empty path
+    if (file_path.empty() || file_path.find_first_not_of(" \t\n\r") == std::string::npos) {
+        throw BinderException("usd_xforms: file_path cannot be empty");
+    }
+
+    // Check if file exists
+    if (!std::filesystem::exists(file_path)) {
+        throw BinderException("usd_xforms: USD file not found: " + file_path);
+    }
+
+    // Check if it's a directory
+    if (std::filesystem::is_directory(file_path)) {
+        throw BinderException("usd_xforms: path is a directory, not a file: " + file_path);
+    }
+
     // Validate file extension
     if (!UsdStageManager::IsValidUsdFile(file_path)) {
-        throw InvalidInputException("File must have a USD extension (.usd, .usda, .usdc, .usdz)");
+        throw BinderException("usd_xforms: file must have a USD extension (.usd, .usda, .usdc, .usdz): " + file_path);
     }
 
     // Define output schema

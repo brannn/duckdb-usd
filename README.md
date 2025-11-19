@@ -207,6 +207,8 @@ Performance characteristics scale linearly with file size and prim count. The ex
 - vcpkg for dependency management
 - OpenUSD 25.8 (installed via vcpkg)
 
+**Note:** This extension requires OpenUSD 25.8, which is available in vcpkg baseline `e9b9012b4e` (October 2025) or later. The CI workflow overrides the default vcpkg baseline to support this requirement. See [extension-ci-tools#285](https://github.com/duckdb/extension-ci-tools/issues/285) for details.
+
 ### Build Steps
 
 ```bash

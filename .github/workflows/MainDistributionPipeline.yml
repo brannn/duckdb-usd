@@ -21,7 +21,8 @@ jobs:
       extension_name: usd
       # OpenUSD has complex build requirements, exclude platforms that may have issues
       # Start with core platforms and expand as needed
-      exclude_archs: 'linux_amd64_musl;wasm_eh;wasm_mvp'
+      # linux_arm64: OpenUSD 25.8 build fails on ARM64 Linux (missing build tools during vcpkg build)
+      exclude_archs: 'linux_amd64_musl;linux_arm64;wasm_eh;wasm_mvp'
       # Override vcpkg baseline to get OpenUSD 25.8 (October 2025)
       # See: https://github.com/duckdb/extension-ci-tools/issues/285
       vcpkg_commit: 'e9b9012b4eea442947623fa7811aaa6c8ab7fde4'

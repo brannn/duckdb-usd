@@ -98,15 +98,28 @@
 #### Phase 8: Distribution
 - [x] CI/CD pipeline setup (MainDistributionPipeline.yml)
 - [x] Extension packaging configuration
+- [x] Upgraded to DuckDB v1.4.2 and extension-ci-tools v1.4.2
+- [ ] **BLOCKED:** vcpkg baseline compatibility issue
 - [ ] Release process documentation
 - [ ] Submit to DuckDB community extensions repository
 
 **CI/CD Implementation:**
-- Created `.github/workflows/MainDistributionPipeline.yml` using DuckDB extension-ci-tools v1.4.1
-- Configured for DuckDB v1.4.1 compatibility
+- Created `.github/workflows/MainDistributionPipeline.yml` using DuckDB extension-ci-tools v1.4.2
+- Configured for DuckDB v1.4.2 compatibility
 - Platform exclusions: linux_amd64_musl, wasm_eh, wasm_mvp (due to OpenUSD build complexity)
 - Supported platforms: Linux (x86_64, ARM64), macOS (x86_64, ARM64), Windows (x86_64)
 - Automated build and test on push, pull request, and manual dispatch
+
+**Current Blocker:**
+- The extension requires OpenUSD 25.8 (released October 2025)
+- Local builds work perfectly with vcpkg baseline `e9b9012b4e` (October 21, 2025)
+- GitHub Actions CI uses Docker images with older vcpkg that doesn't include this baseline
+- Downgrading to USD 25.2 (available in older vcpkg) causes test failures due to breaking changes
+- **Options being evaluated:**
+  1. Wait for DuckDB extension-ci-tools to update their vcpkg version
+  2. Build OpenUSD from source instead of using vcpkg (complex, time-consuming)
+  3. Contribute vcpkg update to extension-ci-tools repository
+- **Status:** Deferred pending decision on approach
 
 ## Test Coverage Analysis
 
@@ -168,22 +181,26 @@
 2. **Static Time:** All queries use UsdTimeCode::Default() (no animation support)
 3. **No Variant Support:** Cannot query across variant sets
 4. **Rotation Detection:** May not detect all rotation types correctly (needs validation)
+5. **CI/CD Blocked:** GitHub Actions builds fail due to vcpkg baseline incompatibility (see Phase 8 blocker above)
 
 ### Technical Debt
 - [x] Add more comprehensive error messages
 - [ ] Implement proper logging/debugging support
 - [ ] Add configuration options (time code, variant selection)
 - [ ] Optimize memory usage for very large files
+- [ ] Resolve vcpkg baseline compatibility for CI/CD
 
 ## Next Steps
 
 ### Immediate Priorities
-1. **Distribution** (Phase 8)
-   - Set up CI/CD pipeline
+1. **Resolve CI/CD Blocker** (Phase 8)
+   - Evaluate options for vcpkg baseline compatibility
+   - Either: wait for extension-ci-tools update, build USD from source, or contribute vcpkg update
+   - Complete CI/CD pipeline verification
    - Extension packaging for multiple platforms
    - Release process documentation
 
-3. **Optional Enhancements**
+2. **Optional Enhancements**
    - Performance regression test suite
    - Stress testing with deeply nested hierarchies
    - Performance profiling and optimization
@@ -197,9 +214,11 @@
 
 ## Repository Information
 
-- **Repository:** git@github.com:Purple-People-Eaters-Inc/duckdb-usd.git
+- **Primary Repository:** git@github.com:Purple-People-Eaters-Inc/duckdb-usd.git
+- **Development Repository:** git@github.com:brannn/duckdb-usd.git (for CI testing)
 - **Branch:** main
-- **Latest Commit:** test: add error handling and edge case tests
-- **Build Status:** ✅ Passing (macOS ARM64)
-- **Test Status:** ✅ All 76 tests passing
+- **Latest Commit:** fix: upgrade to DuckDB v1.4.2 for newer vcpkg baseline
+- **Local Build Status:** ✅ Passing (macOS ARM64 with OpenUSD 25.8)
+- **CI Build Status:** ❌ Blocked (vcpkg baseline incompatibility)
+- **Test Status:** ✅ All 76 tests passing locally
 

@@ -64,12 +64,13 @@ FROM usd_relationships('test/data/relationships_scene.usda')
 GROUP BY prim_path
 ORDER BY relationship_count DESC, prim_path;
 ----
+/World/Rack_03	2
 /World/Server_01	2
 /World/Rack_01	1
 /World/Rack_02	1
-/World/Rack_03	2
 
 # Use case: Invalid file handling
 statement error
 SELECT * FROM usd_relationships('test/data/nonexistent.usda');
-
+----
+USD file not found

@@ -57,4 +57,6 @@ ORDER BY p.prim_path;
 # Use case: Invalid file handling
 statement error
 SELECT * FROM usd_properties('test/data/nonexistent.usda');
+----
+USD file not found
 

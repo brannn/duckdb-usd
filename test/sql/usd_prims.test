@@ -59,6 +59,7 @@ Cube
 statement error
 SELECT * FROM usd_prims('test/data/nonexistent.usda');
 ----
+USD file not found
 
 # Test parent_path column
 query I

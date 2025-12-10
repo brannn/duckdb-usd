@@ -9,7 +9,7 @@ require usd
 query IIII
 SELECT prim_path, x, y, z
 FROM usd_xforms('test/data/transforms_scene.usda')
-WHERE prim_path LIKE '%/Rack_%' AND prim_path NOT LIKE '%/%/%'
+WHERE prim_path LIKE '/World/Rack_%'
 ORDER BY x, z;
 ----
 /World/Rack_A	10.0	0.0	0.0
@@ -101,4 +101,5 @@ Upper Level	1
 # Use case: Invalid file handling
 statement error
 SELECT * FROM usd_xforms('test/data/nonexistent.usda');
-
+----
+USD file not found

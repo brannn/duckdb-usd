@@ -71,8 +71,8 @@ static unique_ptr<FunctionData> UsdPropertiesBind(ClientContext &context, TableF
 
     // Define output schema
     names = {"prim_path", "prop_name", "prop_kind", "usd_type_name", "is_array", "is_time_sampled", "default_value"};
-    return_types = {LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR,
-                    LogicalType::VARCHAR, LogicalType::BOOLEAN, LogicalType::BOOLEAN, LogicalType::VARCHAR};
+    return_types = {LogicalTypeId::VARCHAR, LogicalTypeId::VARCHAR, LogicalTypeId::VARCHAR,
+                    LogicalTypeId::VARCHAR, LogicalTypeId::BOOLEAN, LogicalTypeId::BOOLEAN, LogicalTypeId::VARCHAR};
 
     return make_uniq<UsdPropertiesBindData>(file_path);
 }
@@ -172,7 +172,7 @@ static void UsdPropertiesExecute(ClientContext &context, TableFunctionInput &dat
 }
 
 TableFunction UsdPropertiesFunction::GetFunction() {
-    TableFunction func("usd_properties", {LogicalType::VARCHAR}, UsdPropertiesExecute, UsdPropertiesBind, UsdPropertiesInit);
+    TableFunction func("usd_properties", {LogicalTypeId::VARCHAR}, UsdPropertiesExecute, UsdPropertiesBind, UsdPropertiesInit);
     return func;
 }
 

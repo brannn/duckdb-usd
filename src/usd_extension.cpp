@@ -22,10 +22,10 @@ struct UsdTestGlobalState : public GlobalTableFunctionState {
 static unique_ptr<FunctionData> UsdTestBind(ClientContext &context, TableFunctionBindInput &input,
                                              vector<LogicalType> &return_types, vector<string> &names) {
     names.emplace_back("message");
-    return_types.emplace_back(LogicalType::VARCHAR);
+    return_types.emplace_back(LogicalTypeId::VARCHAR);
 
     names.emplace_back("version");
-    return_types.emplace_back(LogicalType::VARCHAR);
+    return_types.emplace_back(LogicalTypeId::VARCHAR);
 
     return make_uniq<UsdTestFunctionData>();
 }

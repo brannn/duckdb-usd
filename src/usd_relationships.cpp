@@ -61,10 +61,10 @@ static unique_ptr<FunctionData> UsdRelationshipsBind(ClientContext &context, Tab
 
     // Define output schema
     return_types = {
-        LogicalType::VARCHAR,  // prim_path
-        LogicalType::VARCHAR,  // rel_name
-        LogicalType::VARCHAR,  // target_path
-        LogicalType::INTEGER   // target_index
+        LogicalTypeId::VARCHAR,  // prim_path
+        LogicalTypeId::VARCHAR,  // rel_name
+        LogicalTypeId::VARCHAR,  // target_path
+        LogicalTypeId::INTEGER   // target_index
     };
 
     names = {"prim_path", "rel_name", "target_path", "target_index"};
@@ -171,7 +171,7 @@ static void UsdRelationshipsExecute(ClientContext &context, TableFunctionInput &
 
 // Get the table function
 TableFunction UsdRelationshipsFunction::GetFunction() {
-    TableFunction func("usd_relationships", {LogicalType::VARCHAR}, UsdRelationshipsExecute, UsdRelationshipsBind, UsdRelationshipsInit);
+    TableFunction func("usd_relationships", {LogicalTypeId::VARCHAR}, UsdRelationshipsExecute, UsdRelationshipsBind, UsdRelationshipsInit);
     return func;
 }
 

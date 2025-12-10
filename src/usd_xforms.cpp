@@ -59,12 +59,12 @@ static unique_ptr<FunctionData> UsdXformsBind(ClientContext &context, TableFunct
 
     // Define output schema
     return_types = {
-        LogicalType::VARCHAR,  // prim_path
-        LogicalType::DOUBLE,   // x
-        LogicalType::DOUBLE,   // y
-        LogicalType::DOUBLE,   // z
-        LogicalType::BOOLEAN,  // has_rotation
-        LogicalType::BOOLEAN   // has_scale
+        LogicalTypeId::VARCHAR,  // prim_path
+        LogicalTypeId::DOUBLE,   // x
+        LogicalTypeId::DOUBLE,   // y
+        LogicalTypeId::DOUBLE,   // z
+        LogicalTypeId::BOOLEAN,  // has_rotation
+        LogicalTypeId::BOOLEAN   // has_scale
     };
 
     names = {"prim_path", "x", "y", "z", "has_rotation", "has_scale"};
@@ -172,7 +172,7 @@ static void UsdXformsExecute(ClientContext &context, TableFunctionInput &data_p,
 
 // Get the table function
 TableFunction UsdXformsFunction::GetFunction() {
-    TableFunction func("usd_xforms", {LogicalType::VARCHAR}, UsdXformsExecute, UsdXformsBind, UsdXformsInit);
+    TableFunction func("usd_xforms", {LogicalTypeId::VARCHAR}, UsdXformsExecute, UsdXformsBind, UsdXformsInit);
     return func;
 }
 

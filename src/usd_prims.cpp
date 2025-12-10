@@ -30,7 +30,7 @@ static unique_ptr<FunctionData> UsdPrimsBind(ClientContext &context, TableFuncti
         throw BinderException("usd_prims requires exactly one argument: file_path");
     }
     
-    if (input.inputs[0].type() != LogicalType::VARCHAR) {
+    if (input.inputs[0].type() != LogicalTypeId::VARCHAR) {
         throw BinderException("usd_prims file_path must be a string");
     }
     
@@ -58,25 +58,25 @@ static unique_ptr<FunctionData> UsdPrimsBind(ClientContext &context, TableFuncti
     
     // Define output schema - all columns from Phase 2
     names.emplace_back("prim_path");
-    return_types.emplace_back(LogicalType::VARCHAR);
+    return_types.emplace_back(LogicalTypeId::VARCHAR);
 
     names.emplace_back("parent_path");
-    return_types.emplace_back(LogicalType::VARCHAR);
+    return_types.emplace_back(LogicalTypeId::VARCHAR);
 
     names.emplace_back("name");
-    return_types.emplace_back(LogicalType::VARCHAR);
+    return_types.emplace_back(LogicalTypeId::VARCHAR);
 
     names.emplace_back("prim_type");
-    return_types.emplace_back(LogicalType::VARCHAR);
+    return_types.emplace_back(LogicalTypeId::VARCHAR);
 
     names.emplace_back("kind");
-    return_types.emplace_back(LogicalType::VARCHAR);
+    return_types.emplace_back(LogicalTypeId::VARCHAR);
 
     names.emplace_back("active");
-    return_types.emplace_back(LogicalType::BOOLEAN);
+    return_types.emplace_back(LogicalTypeId::BOOLEAN);
 
     names.emplace_back("instanceable");
-    return_types.emplace_back(LogicalType::BOOLEAN);
+    return_types.emplace_back(LogicalTypeId::BOOLEAN);
 
     return make_uniq<UsdPrimsBindData>(file_path);
 }
@@ -151,7 +151,7 @@ static void UsdPrimsExecute(ClientContext &context, TableFunctionInput &data_p, 
 }
 
 TableFunction UsdPrimsFunction::GetFunction() {
-    TableFunction func("usd_prims", {LogicalType::VARCHAR}, UsdPrimsExecute, UsdPrimsBind, UsdPrimsInit);
+    TableFunction func("usd_prims", {LogicalTypeId::VARCHAR}, UsdPrimsExecute, UsdPrimsBind, UsdPrimsInit);
     return func;
 }
 

@@ -4,68 +4,65 @@
 
 require usd
 
-# Use case: Extract equipment positions for spatial layout analysis
-# Critical for datacenter floor planning and equipment placement
+# Use case: Extract object positions for spatial layout analysis
 query IIII
 SELECT prim_path, x, y, z
 FROM usd_xforms('test/data/transforms_scene.usda')
-WHERE prim_path LIKE '/World/Rack_%'
+WHERE prim_path LIKE '/World/Object_%'
 ORDER BY x, z;
 ----
-/World/Rack_A	10.0	0.0	0.0
-/World/Rack_B	10.0	0.0	5.0
-/World/Rack_C	20.0	0.0	5.0
+/World/Object_A	10.0	0.0	0.0
+/World/Object_B	10.0	0.0	5.0
+/World/Object_C	20.0	0.0	5.0
 
 # Use case: Verify nested transform inheritance
 # Ensures child prims correctly inherit parent transforms
 query IIII
 SELECT prim_path, x, y, z
 FROM usd_xforms('test/data/transforms_scene.usda')
-WHERE prim_path LIKE '%/DatacenterRow%'
+WHERE prim_path LIKE '%/Group_A%'
 ORDER BY prim_path;
 ----
-/World/DatacenterRow	100.0	0.0	0.0
-/World/DatacenterRow/Rack_D	100.0	0.0	5.0
-/World/DatacenterRow/Rack_E	100.0	0.0	10.0
+/World/Group_A	100.0	0.0	0.0
+/World/Group_A/Child_01	100.0	0.0	5.0
+/World/Group_A/Child_02	100.0	0.0	10.0
 
-# Use case: Detect scaled equipment
-# Important for identifying equipment with non-standard dimensions
+# Use case: Detect scaled objects
+# Important for identifying objects with non-standard dimensions
 query III
 SELECT prim_path, has_scale, has_rotation
 FROM usd_xforms('test/data/transforms_scene.usda')
 WHERE has_scale = true OR has_rotation = true
 ORDER BY prim_path;
 ----
-/World/ScaledEquipment	true	false
+/World/ScaledObject	true	false
 
-# Use case: Proximity analysis - find nearest cooling unit to each rack
-# Critical for thermal management and cooling efficiency
+# Use case: Proximity analysis - find nearest anchor to each object
 query III
-WITH rack_positions AS (
+WITH object_positions AS (
     SELECT prim_path, x, y, z
     FROM usd_xforms('test/data/transforms_scene.usda')
-    WHERE prim_path LIKE '/World/Rack_%'
+    WHERE prim_path LIKE '/World/Object_%'
 ),
-crac_positions AS (
+anchor_positions AS (
     SELECT prim_path, x, y, z
     FROM usd_xforms('test/data/transforms_scene.usda')
-    WHERE prim_path LIKE '%/CRAC%'
+    WHERE prim_path LIKE '%/Anchor%'
 )
 SELECT
-    r.prim_path as rack,
-    c.prim_path as nearest_crac,
-    ROUND(SQRT(POW(r.x - c.x, 2) + POW(r.y - c.y, 2) + POW(r.z - c.z, 2)), 2) as distance
-FROM rack_positions r
-CROSS JOIN crac_positions c
-QUALIFY ROW_NUMBER() OVER (PARTITION BY r.prim_path ORDER BY distance) = 1
+    o.prim_path as object,
+    a.prim_path as nearest_anchor,
+    ROUND(SQRT(POW(o.x - a.x, 2) + POW(o.y - a.y, 2) + POW(o.z - a.z, 2)), 2) as distance
+FROM object_positions o
+CROSS JOIN anchor_positions a
+QUALIFY ROW_NUMBER() OVER (PARTITION BY o.prim_path ORDER BY distance) = 1
 ORDER BY distance;
 ----
-/World/Rack_A	/World/CRAC_01	5.0
-/World/Rack_B	/World/CRAC_01	7.07
-/World/Rack_C	/World/CRAC_01	7.07
+/World/Object_A	/World/Anchor_01	5.0
+/World/Object_B	/World/Anchor_01	7.07
+/World/Object_C	/World/Anchor_01	7.07
 
-# Use case: Spatial filtering - find equipment within a bounding box
-# Useful for analyzing specific datacenter zones
+# Use case: Spatial filtering - find objects within a bounding box
 query I
 SELECT prim_path
 FROM usd_xforms('test/data/transforms_scene.usda')
@@ -73,24 +70,23 @@ WHERE x BETWEEN 5 AND 25
   AND z BETWEEN 0 AND 10
 ORDER BY prim_path;
 ----
-/World/CRAC_01
-/World/Rack_A
-/World/Rack_B
-/World/Rack_C
-/World/RotatedEquipment
+/World/Anchor_01
+/World/Object_A
+/World/Object_B
+/World/Object_C
+/World/RotatedObject
 
-# Use case: Count equipment by floor level (Y coordinate)
-# Helps analyze vertical distribution in multi-level datacenters
+# Use case: Count objects by vertical level (Y coordinate)
 query II
-SELECT 
-    CASE 
+SELECT
+    CASE
         WHEN y = 0 THEN 'Ground Floor'
         WHEN y > 0 AND y < 5 THEN 'Mezzanine'
         ELSE 'Upper Level'
     END as level,
-    COUNT(*) as equipment_count
+    COUNT(*) as object_count
 FROM usd_xforms('test/data/transforms_scene.usda')
-WHERE prim_path LIKE '%/Rack_%' OR prim_path LIKE '%/CRAC%' OR prim_path LIKE '%Equipment'
+WHERE prim_path LIKE '%/Object_%' OR prim_path LIKE '%/Anchor%' OR prim_path LIKE '%Object'
 GROUP BY level
 ORDER BY level;
 ----

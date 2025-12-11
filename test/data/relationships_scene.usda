@@ -6,49 +6,49 @@
 
 def Xform "World"
 {
-    def "PDU_A" (
+    def "Source_A" (
         kind = "component"
     )
     {
     }
 
-    def "PDU_B" (
+    def "Source_B" (
         kind = "component"
     )
     {
     }
 
-    def "Rack_01" (
+    def "Node_01" (
         kind = "component"
     )
     {
-        rel powerSource = </World/PDU_A>
+        rel connection = </World/Source_A>
     }
 
-    def "Rack_02" (
+    def "Node_02" (
         kind = "component"
     )
     {
-        rel powerSource = </World/PDU_B>
+        rel connection = </World/Source_B>
     }
 
-    def "Rack_03" (
+    def "Node_03" (
         kind = "component"
     )
     {
         # Multi-target relationship
-        rel powerSource = [
-            </World/PDU_A>,
-            </World/PDU_B>
+        rel connection = [
+            </World/Source_A>,
+            </World/Source_B>
         ]
     }
 
-    def "Server_01" (
+    def "Device_01" (
         kind = "component"
     )
     {
-        rel parent = </World/Rack_01>
-        rel powerSource = </World/PDU_A>
+        rel parent = </World/Node_01>
+        rel connection = </World/Source_A>
     }
 }
 

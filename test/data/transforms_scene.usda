@@ -16,7 +16,7 @@ def Xform "World"
     }
 
     # Translation only - moved 10 units along X axis
-    def Xform "Rack_A" (
+    def Xform "Object_A" (
         kind = "component"
     )
     {
@@ -24,8 +24,8 @@ def Xform "World"
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
 
-    # Translation in 3D space - datacenter rack position
-    def Xform "Rack_B" (
+    # Translation in 3D space
+    def Xform "Object_B" (
         kind = "component"
     )
     {
@@ -33,8 +33,8 @@ def Xform "World"
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
 
-    # Another rack for proximity testing
-    def Xform "Rack_C" (
+    # Another object for proximity testing
+    def Xform "Object_C" (
         kind = "component"
     )
     {
@@ -42,8 +42,8 @@ def Xform "World"
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
 
-    # Cooling unit - CRAC position
-    def Xform "CRAC_01" (
+    # Reference point for proximity calculations
+    def Xform "Anchor_01" (
         kind = "component"
     )
     {
@@ -52,7 +52,7 @@ def Xform "World"
     }
 
     # Rotation + Translation
-    def Xform "RotatedEquipment" (
+    def Xform "RotatedObject" (
         kind = "component"
     )
     {
@@ -62,7 +62,7 @@ def Xform "World"
     }
 
     # Scale + Translation
-    def Xform "ScaledEquipment" (
+    def Xform "ScaledObject" (
         kind = "component"
     )
     {
@@ -72,7 +72,7 @@ def Xform "World"
     }
 
     # Nested transforms - parent/child hierarchy
-    def Xform "DatacenterRow" (
+    def Xform "Group_A" (
         kind = "group"
     )
     {
@@ -80,7 +80,7 @@ def Xform "World"
         uniform token[] xformOpOrder = ["xformOp:translate"]
 
         # Child inherits parent transform
-        def Xform "Rack_D" (
+        def Xform "Child_01" (
             kind = "component"
         )
         {
@@ -89,7 +89,7 @@ def Xform "World"
             # World position should be (100, 0, 5)
         }
 
-        def Xform "Rack_E" (
+        def Xform "Child_02" (
             kind = "component"
         )
         {
@@ -107,8 +107,8 @@ def Xform "World"
         # This prim has no xformOp attributes
     }
 
-    # Far away equipment for distance testing
-    def Xform "RemoteServer" (
+    # Far away object for distance testing
+    def Xform "Remote_01" (
         kind = "component"
     )
     {

@@ -1,0 +1,35 @@
+#usda 1.0
+(
+    defaultPrim = "Sample"
+)
+
+def "Sample"
+{
+    custom bool flag = 1
+    custom int count = 42
+    custom int64 big = 9000000000
+    custom uint unsigned_value = 7
+    custom float ratio = 0.25
+    custom double rating = 1250.5
+    custom half small = 0.5
+    custom string label = "unit \"alpha\""
+    custom token state = "online"
+    custom asset manual = @./docs/manual.pdf@
+    custom double3 offset = (1, 2, 3)
+    custom float3[] samples = [(0, 0, 0), (1, 1, 1)]
+    custom int[] codes = [3, 1, 2]
+    custom matrix4d frame = ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (5, 6, 7, 1) )
+    custom quatf orientation = (1, 0, 0, 0)
+    custom double temperature.timeSamples = {
+        0: 20,
+        10: 30,
+    }
+    custom uniform token mode = "auto"
+    custom string unset
+    custom rel feeds = </Box>
+}
+
+def Cube "Box"
+{
+    double size = 3
+}

@@ -1,0 +1,106 @@
+# name: test/sql/usd_composition_arcs.test
+# description: usd_composition_arcs - references, payloads, inherits, specializes and variant selections of each prim
+# group: [sql]
+
+require usd
+
+# Expected results were computed with OpenUSD's UsdPrimCompositionQuery (usd-core)
+
+# Direct arcs, strongest first. The reference to arcs_asset.usda brings an inherit of _AssetClass from the asset and
+# implies one of the root layer's _AssetClass; an inherit of a class nobody defines has no specs
+query ITTTTTTTTTTTT
+SELECT prim_path, arc_index, arc_type, asset_path, parse_filename(target_layer), target_prim_path, variant_set, variant,
+       parse_filename(introducing_layer), introducing_prim_path, is_ancestral, is_implicit, has_specs
+FROM usd_composition_arcs('test/data/arcs.usda');
+----
+/World/Inheriting	0	inherit	NULL	arcs.usda	/_Base	NULL	NULL	arcs.usda	/World/Inheriting	false	false	true
+/World/Inheriting	1	inherit	NULL	arcs.usda	/_Undefined	NULL	NULL	arcs.usda	/World/Inheriting	false	false	false
+/World/Specializing	0	specialize	NULL	arcs.usda	/_Base	NULL	NULL	arcs.usda	/World/Specializing	false	false	true
+/World/External	0	inherit	NULL	arcs.usda	/_AssetClass	NULL	NULL	arcs_asset.usda	/Asset	false	true	true
+/World/External	1	reference	./arcs_asset.usda	arcs_asset.usda	/Asset	NULL	NULL	arcs.usda	/World/External	false	false	true
+/World/External	2	inherit	NULL	arcs_asset.usda	/_AssetClass	NULL	NULL	arcs_asset.usda	/Asset	false	false	true
+/World/Instanced_1	0	reference	NULL	arcs.usda	/_Template	NULL	NULL	arcs.usda	/World/Instanced_1	false	false	true
+/World/Instanced_2	0	reference	NULL	arcs.usda	/_Template	NULL	NULL	arcs.usda	/World/Instanced_2	false	false	true
+
+# Ancestral arcs: the children of a referenced prim are composed through their parent's reference
+query ITTTTTTTTTTTT
+SELECT prim_path, arc_index, arc_type, asset_path, parse_filename(target_layer), target_prim_path, variant_set, variant,
+       parse_filename(introducing_layer), introducing_prim_path, is_ancestral, is_implicit, has_specs
+FROM usd_composition_arcs('test/data/arcs.usda', include_ancestral := true)
+WHERE prim_path = '/World/External/Part';
+----
+/World/External/Part	0	inherit	NULL	arcs.usda	/_AssetClass/Part	NULL	NULL	arcs_asset.usda	/Asset	true	true	false
+/World/External/Part	1	reference	./arcs_asset.usda	arcs_asset.usda	/Asset/Part	NULL	NULL	arcs.usda	/World/External	true	false	true
+/World/External/Part	2	inherit	NULL	arcs_asset.usda	/_AssetClass/Part	NULL	NULL	arcs_asset.usda	/Asset	true	false	false
+
+# Prims without arcs of their own produce no rows, with or without ancestral arcs
+query II
+SELECT (SELECT count(*) FROM usd_composition_arcs('test/data/arcs.usda')),
+       (SELECT count(*) FROM usd_composition_arcs('test/data/arcs.usda', include_ancestral := true));
+----
+8	11
+
+# Inside instances (instance_proxies), a prim of the shared prototype reports its own arcs
+query ITTTTTTTT
+SELECT prim_path, arc_index, arc_type, asset_path, parse_filename(target_layer), target_prim_path,
+       parse_filename(introducing_layer), introducing_prim_path, is_implicit
+FROM usd_composition_arcs('test/data/arcs.usda', instance_proxies := true)
+WHERE prim_path LIKE '/World/Instanced\__/%' ESCAPE '\';
+----
+/World/Instanced_1/Inner	0	inherit	NULL	arcs.usda	/_AssetClass	arcs_asset.usda	/Asset	true
+/World/Instanced_1/Inner	1	reference	./arcs_asset.usda	arcs_asset.usda	/Asset	arcs.usda	/_Template/Inner	false
+/World/Instanced_1/Inner	2	inherit	NULL	arcs_asset.usda	/_AssetClass	arcs_asset.usda	/Asset	false
+/World/Instanced_2/Inner	0	inherit	NULL	arcs.usda	/_AssetClass	arcs_asset.usda	/Asset	true
+/World/Instanced_2/Inner	1	reference	./arcs_asset.usda	arcs_asset.usda	/Asset	arcs.usda	/_Template/Inner	false
+/World/Instanced_2/Inner	2	inherit	NULL	arcs_asset.usda	/_AssetClass	arcs_asset.usda	/Asset	false
+
+# Instances share the prim index of one of them: arcs introduced by the instance itself are reported for the instance
+# the prim is in, not for the one OpenUSD chose as the prototype's source
+query TTTT
+SELECT prim_path, arc_index, target_prim_path, introducing_prim_path
+FROM usd_composition_arcs('test/data/arcs.usda', instance_proxies := true, include_ancestral := true)
+WHERE prim_path LIKE '/World/Instanced\__/%' ESCAPE '\' AND target_prim_path LIKE '/\_Template%' ESCAPE '\'
+ORDER BY prim_path;
+----
+/World/Instanced_1/Inner	0	/_Template/Inner	/World/Instanced_1
+/World/Instanced_1/Inner/Part	0	/_Template/Inner/Part	/World/Instanced_1
+/World/Instanced_2/Inner	0	/_Template/Inner	/World/Instanced_2
+/World/Instanced_2/Inner/Part	0	/_Template/Inner/Part	/World/Instanced_2
+
+# Variant selections and payloads; the reference to a missing file has no arc (see usd_composition_errors)
+query TITTTTTTT
+SELECT prim_path, arc_index, arc_type, asset_path, parse_filename(target_layer), target_prim_path, variant_set, variant,
+       introducing_prim_path
+FROM usd_composition_arcs('test/data/composition.usda');
+----
+/Plant/Module_1	0	reference	NULL	composition.usda	/_Module	NULL	NULL	/Plant/Module_1
+/Plant/Module_2	0	reference	NULL	composition.usda	/_Module	NULL	NULL	/Plant/Module_2
+/Plant/Configurable	0	variant	NULL	composition.usda	/Plant/Configurable{size=large}	size	large	/Plant/Configurable
+/Plant/Payloaded	0	payload	./composition_payload.usda	composition_payload.usda	/Equipment	NULL	NULL	/Plant/Payloaded
+
+# Which assets a scene uses, and how often
+query TI
+SELECT asset_path, count(*)
+FROM usd_composition_arcs('test/data/arcs.usda', instance_proxies := true)
+WHERE arc_type IN ('reference', 'payload') AND asset_path IS NOT NULL
+GROUP BY ALL;
+----
+./arcs_asset.usda	3
+
+# Unloaded payloads are not composed, so they have no arc
+query I
+SELECT count(*) FROM usd_composition_arcs('test/data/composition.usda', load_payloads := false) WHERE arc_type = 'payload';
+----
+0
+
+# Projections, the filename column and a subtree
+query TT
+SELECT arc_type, parse_filename(filename)
+FROM usd_composition_arcs('test/data/composition.usda', root := '/Plant/Payloaded', filename := true);
+----
+payload	composition.usda
+
+statement error
+SELECT * FROM usd_composition_arcs('test/data/arcs.usda', include_ancestral := NULL);
+----
+The "include_ancestral" option cannot be NULL

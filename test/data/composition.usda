@@ -1,0 +1,78 @@
+#usda 1.0
+(
+    defaultPrim = "Plant"
+    subLayers = [
+        @./composition_sublayer.usda@
+    ]
+    upAxis = "Y"
+)
+
+class Xform "_Module"
+{
+    def Cube "Body"
+    {
+        double size = 1
+    }
+
+    def Sphere "Lamp"
+    {
+        double radius = 0.1
+    }
+}
+
+def Xform "Plant"
+{
+    def Xform "Module_1" (
+        instanceable = true
+        references = </_Module>
+    )
+    {
+        double3 xformOp:translate = (0, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Xform "Module_2" (
+        instanceable = true
+        references = </_Module>
+    )
+    {
+        double3 xformOp:translate = (4, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Cube "Configurable" (
+        variants = {
+            string size = "large"
+        }
+        prepend variantSets = ["size", "finish"]
+    )
+    {
+        variantSet "size" = {
+            "large" {
+                double size = 3
+            }
+            "small" {
+                double size = 1
+            }
+        }
+        variantSet "finish" = {
+            "matte" {
+            }
+            "gloss" {
+            }
+        }
+    }
+
+    def Xform "Payloaded" (
+        payload = @./composition_payload.usda@</Equipment>
+    )
+    {
+    }
+
+    # References a file that does not exist: reported by usd_composition_errors
+    def Xform "Broken" (
+        references = @./missing_asset.usda@</Thing>
+    )
+    {
+    }
+}

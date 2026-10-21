@@ -1,0 +1,111 @@
+# name: test/sql/usd_edge_cases.test
+# description: empty and minimal stages, projections, and scans that span many chunks
+# group: [sql]
+
+require usd
+
+foreach function usd_prims usd_properties usd_relationships usd_xforms usd_bounds usd_variants usd_composition_errors
+
+query I
+SELECT count(*) FROM {function}('test/data/empty_scene.usda');
+----
+0
+
+endloop
+
+query I
+SELECT count(*) FROM usd_layers('test/data/empty_scene.usda');
+----
+1
+
+query IIII
+SELECT prim_path, parent_path, prim_type, kind FROM usd_prims('test/data/minimal_scene.usda');
+----
+/Root	/	Xform	NULL
+
+# An Xform has its schema's properties even when nothing is authored
+query II
+SELECT property_name, property_kind FROM usd_properties('test/data/minimal_scene.usda');
+----
+proxyPrim	relationship
+purpose	attribute
+visibility	attribute
+xformOpOrder	attribute
+
+# Aggregates over no rows
+query III
+SELECT count(*), max(length(prim_path)), min(depth) FROM usd_prims('test/data/empty_scene.usda');
+----
+0	NULL	NULL
+
+# grid.usda: 1 + 50 rows + 50 * 60 cells, more prims than one scan morsel and more rows than one chunk
+query I
+SELECT count(*) FROM usd_prims('test/data/grid.usda');
+----
+3051
+
+query IIII
+SELECT count(*), sum(x), sum(y), max(z) FROM usd_xforms('test/data/grid.usda') WHERE prim_path LIKE '/Grid/Row_%/Cell_%';
+----
+3000	88500.0	73500.0	0.0
+
+query I
+SELECT count(*) FROM usd_properties('test/data/grid.usda') WHERE property_name = 'xformOp:translate';
+----
+3000
+
+# Results keep the traversal order even when scanned in parallel
+statement ok
+SET threads = 4;
+
+query I
+SELECT prim_path FROM usd_prims('test/data/grid.usda') LIMIT 5;
+----
+/Grid
+/Grid/Row_00
+/Grid/Row_00/Cell_00
+/Grid/Row_00/Cell_01
+/Grid/Row_00/Cell_02
+
+query I
+SELECT prim_path FROM usd_prims('test/data/grid.usda') OFFSET 3050;
+----
+/Grid/Row_49/Cell_59
+
+query I
+SELECT count(*) = 3051 AND bool_and(prim_path IS NOT NULL) FROM (SELECT prim_path FROM usd_prims('test/data/grid.usda'));
+----
+true
+
+# Joining two scans of the same file
+query I
+SELECT count(*) FROM usd_prims('test/data/grid.usda') p JOIN usd_xforms('test/data/grid.usda') x USING (prim_path) WHERE p.depth = 3 AND x.x = 59;
+----
+50
+
+# Selecting a single column (only the projected columns are written)
+query I
+SELECT count(value) FROM usd_properties('test/data/properties.usda');
+----
+24
+
+query I
+SELECT count(rotation) FROM usd_xforms('test/data/transforms.usda');
+----
+14
+
+# USD strings need not be valid UTF-8, which VARCHAR requires: invalid bytes become '?', valid characters are kept
+query I
+SELECT documentation FROM usd_stage_metadata('test/data/invalid_utf8.usda');
+----
+bad ? byte
+
+query II
+SELECT kind, custom_data.note::VARCHAR FROM usd_prims('test/data/invalid_utf8.usda');
+----
+odd?kind	x?y
+
+query I
+SELECT value::VARCHAR FROM usd_properties('test/data/invalid_utf8.usda', authored_only := true) WHERE property_name = 'label';
+----
+café ??? end

@@ -1,0 +1,20 @@
+#usda 1.0
+(
+    doc = "Reads the values of an attribute from a value clip outside its own directory, for the allowed_directories tests"
+    startTimeCode = 1
+    endTimeCode = 2
+)
+
+def Xform "Sensor" (
+    clips = {
+        dictionary default = {
+            double2[] active = [(1, 0)]
+            asset[] assetPaths = [@../clip_values.usda@]
+            string primPath = "/Sensor"
+            double2[] times = [(1, 1), (2, 2)]
+        }
+    }
+)
+{
+    custom double reading
+}

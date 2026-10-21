@@ -1,0 +1,103 @@
+# name: test/sql/usd_multi_file.test
+# description: scanning several files at once (globs and lists) and the filename option
+# group: [sql]
+
+require usd
+
+query II
+SELECT parse_filename(filename), prim_path FROM usd_prims('test/data/multi/*.usda', filename := true) ORDER BY ALL;
+----
+part_1.usda	/Part
+part_1.usda	/Part/Block
+part_2.usda	/Part
+part_2.usda	/Part/Ball
+part_2.usda	/Part/Ball_2
+
+query I
+SELECT count(*) FROM usd_prims(['test/data/multi/part_1.usda', 'test/data/multi/part_2.usda']);
+----
+5
+
+# Files are scanned in order, so results keep the order of the list
+query I
+SELECT parse_filename(filename) FROM usd_prims(['test/data/multi/part_2.usda', 'test/data/multi/part_1.usda'], filename := true) LIMIT 1;
+----
+part_2.usda
+
+# Units differ per file: convert with the stage metadata
+query III
+SELECT parse_filename(filename), up_axis, meters_per_unit FROM usd_stage_metadata('test/data/multi/*.usda', filename := true) ORDER BY 1;
+----
+part_1.usda	Z	0.01
+part_2.usda	Y	1.0
+
+query II
+SELECT parse_filename(b.filename), round(max((b.max_x - b.min_x) * m.meters_per_unit), 2) AS widest_meters
+FROM usd_bounds('test/data/multi/*.usda', filename := true) b
+JOIN usd_stage_metadata('test/data/multi/*.usda', filename := true) m USING (filename)
+GROUP BY ALL
+ORDER BY 1;
+----
+part_1.usda	0.01
+part_2.usda	4.0
+
+# Querying a glob of USD files directly
+query I
+SELECT count(*) FROM 'test/data/multi/*.usda';
+----
+5
+
+statement error
+SELECT * FROM usd_prims('test/data/multi/*.nothing');
+----
+no USD files found
+
+# A file that cannot be opened fails the scan, unless ignore_errors := true skips it
+statement error
+SELECT count(*) FROM usd_prims(['test/data/malformed.usda', 'test/data/scene.usda']);
+----
+Failed to open USD stage
+
+query I
+SELECT count(*) FROM usd_prims(['test/data/malformed.usda', 'test/data/scene.usda'], ignore_errors := true);
+----
+8
+
+statement error
+SELECT * FROM usd_prims(['test/data/multi/part_1.usda', 'test/data/multi/missing.usda']);
+----
+USD file not found
+
+# ignore_errors also skips files that are missing or are not USD files
+query I
+SELECT count(*) FROM usd_prims(['test/data/multi/part_1.usda', 'test/data/multi/missing.usda'], ignore_errors := true);
+----
+2
+
+statement error
+SELECT * FROM usd_stage_metadata('test/data/*');
+----
+Not a USD file
+
+query I
+SELECT count(*) = (SELECT count(*) - 1 FROM glob('test/data/*.usda')) FROM usd_stage_metadata('test/data/*', ignore_errors := true);
+----
+true
+
+# A file can also be given as a struct (as for DuckDB's other readers)
+query I
+SELECT count(*) FROM usd_prims([{'filename': 'test/data/multi/part_1.usda'}]);
+----
+2
+
+# Relative paths are also looked up in file_search_path
+statement ok
+SET file_search_path = 'test/data/multi';
+
+query I
+SELECT count(*) FROM usd_prims('part_1.usda');
+----
+2
+
+statement ok
+RESET file_search_path;

@@ -1,0 +1,135 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    doc = "Material bindings: direct, inherited, per purpose, to a missing material and to a prim that is not a material, legacy (without MaterialBindingAPI), collection-based, on a geometry subset, stronger than descendants, and inside instances"
+)
+
+def Xform "World" (
+    prepend apiSchemas = ["MaterialBindingAPI", "CollectionAPI:metal"]
+)
+{
+    rel material:binding = </World/Looks/Default>
+    uniform token collection:metal:expansionRule = "expandPrims"
+    rel collection:metal:includes = </World/Geo/Collected>
+    rel material:binding:collection:Metal = [</World.collection:metal>, </World/Looks/Metal>]
+    rel material:binding:collection:full:Painted = [</World.collection:metal>, </World/Looks/Red>]
+
+    def Scope "Looks"
+    {
+        def Material "Default"
+        {
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+            }
+        }
+        def Material "Red" {}
+        def Material "Blue" {}
+        def Material "Metal" {}
+        def Material "Preview" {}
+    }
+
+    def Xform "Geo"
+    {
+        def Cube "Direct" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </World/Looks/Red>
+        }
+
+        def Cube "Inherited"
+        {
+        }
+
+        def Cube "Purposes" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </World/Looks/Red>
+            rel material:binding:preview = </World/Looks/Preview>
+            rel material:binding:full = </World/Looks/Blue>
+        }
+
+        def Cube "Missing" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </World/Looks/DoesNotExist>
+        }
+
+        def Cube "WrongTarget" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </World/Geo>
+        }
+
+        def Cube "Legacy"
+        {
+            rel material:binding = </World/Looks/Blue>
+        }
+
+        def Cube "Collected"
+        {
+        }
+
+        def Mesh "Subsets"
+        {
+            def GeomSubset "Top" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token elementType = "face"
+                uniform token familyName = "materialBind"
+                int[] indices = [0]
+                rel material:binding = </World/Looks/Blue>
+            }
+        }
+    }
+
+    def Xform "Strong" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </World/Looks/Blue> (
+            bindMaterialAs = "strongerThanDescendants"
+        )
+
+        def Cube "Overridden" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </World/Looks/Red>
+        }
+    }
+
+    def Xform "Instances"
+    {
+        def "One" (
+            instanceable = true
+            references = </_Prototype>
+        )
+        {
+        }
+        def "Two" (
+            instanceable = true
+            references = </_Prototype>
+        )
+        {
+        }
+    }
+}
+
+class Xform "_Prototype"
+{
+    def Cube "Part" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </World/Looks/Red>
+    }
+    def Cube "Plain"
+    {
+    }
+}

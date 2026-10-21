@@ -1,0 +1,41 @@
+# name: test/sql/usd_stage.test
+# description: usd_stage_metadata, usd_version and the functions' descriptions
+# group: [sql]
+
+require usd
+
+query IIIIIIII
+SELECT default_prim, up_axis, meters_per_unit, start_time_code, end_time_code, time_codes_per_second, frames_per_second, layer_count
+FROM usd_stage_metadata('test/data/scene.usda');
+----
+Site	Z	0.01	0.0	10.0	24.0	24.0	1
+
+query III
+SELECT documentation, custom_layer_data.generator::VARCHAR, custom_layer_data.revision::INTEGER
+FROM usd_stage_metadata('test/data/scene.usda');
+----
+Synthetic scene for the usd extension tests	hand written	3
+
+# Without an authored time code range, start and end are NULL
+query III
+SELECT default_prim, start_time_code, end_time_code FROM usd_stage_metadata('test/data/properties.usda');
+----
+Sample	NULL	NULL
+
+# The root layer plus its sublayer and payload
+query I
+SELECT layer_count FROM usd_stage_metadata('test/data/composition.usda');
+----
+3
+
+query I
+SELECT regexp_matches(usd_version(), '^\d+\.\d\d$');
+----
+true
+
+# Every function describes itself in duckdb_functions(), with an example
+query II
+SELECT count(DISTINCT function_name), count(*) FILTER (description IS NULL OR len(examples) = 0)
+FROM duckdb_functions() WHERE function_name LIKE 'usd\_%' ESCAPE '\';
+----
+13	0

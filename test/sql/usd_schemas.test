@@ -1,0 +1,99 @@
+# name: test/sql/usd_schemas.test
+# description: OpenUSD's schema domains beyond geometry, shading and lights (physics, skeletons, labels, volumes, ...)
+# group: [sql]
+
+require usd
+
+# Expected rows come from OpenUSD (Python): UsdPrim.IsA(UsdGeom.Xformable / UsdGeom.Imageable),
+# GetAppliedSchemas, GetProperties, UsdGeom.XformCache and UsdGeom.BBoxCache. A prim whose schema USD does not
+# know would have no fallback properties, no applied API schemas, and would not be xformable or imageable.
+
+query IIIIIII
+SELECT p.prim_path, p.prim_type, x.prim_path IS NOT NULL AS xformable, b.prim_path IS NOT NULL AS imageable,
+       p.applied_schemas,
+       (SELECT count(*) FROM usd_properties('test/data/schemas.usda') q WHERE q.prim_path = p.prim_path),
+       (SELECT count(*) FROM usd_properties('test/data/schemas.usda', authored_only := true) q
+        WHERE q.prim_path = p.prim_path)
+FROM usd_prims('test/data/schemas.usda') p
+LEFT JOIN usd_xforms('test/data/schemas.usda') x USING (prim_path)
+LEFT JOIN usd_bounds('test/data/schemas.usda') b USING (prim_path)
+ORDER BY p.prim_path;
+----
+/Notes	Backdrop	false	false	[SceneGraphPrimAPI]	3	1
+/Render	Scope	false	true	[]	3	0
+/Render/Settings	RenderSettings	false	false	[]	12	1
+/World	Xform	true	true	[]	4	0
+/World/Character	SkelRoot	true	true	[SkelBindingAPI]	15	3
+/World/Character/Body	Mesh	true	true	[SkelBindingAPI]	34	6
+/World/Character/Skeleton	Skeleton	true	true	[SkelBindingAPI]	18	4
+/World/Character/Skeleton/Walk	SkelAnimation	false	false	[]	6	2
+/World/PhysicsScene	PhysicsScene	false	false	[]	2	2
+/World/Pump	Cube	true	true	['SemanticsLabelsAPI:class']	12	3
+/World/Robot	Xform	true	true	[PhysicsArticulationRootAPI]	5	2
+/World/Robot/Arm	Cube	true	true	[PhysicsRigidBodyAPI, PhysicsCollisionAPI]	18	3
+/World/Robot/Base	Cube	true	true	[PhysicsRigidBodyAPI, PhysicsCollisionAPI, PhysicsMassAPI]	22	1
+/World/Robot/Hinge	PhysicsRevoluteJoint	false	true	[]	17	7
+/World/Scatter	GenerativeProcedural	true	true	[]	6	1
+/World/Smoke	Volume	true	true	[]	11	4
+/World/Smoke/Density	OpenVDBAsset	true	true	[]	10	2
+/World/Speaker	SpatialAudio	true	true	[]	12	4
+
+# World positions of prims that are only xformable through their schema
+
+query IIII
+SELECT prim_path, x, y, z FROM usd_xforms('test/data/schemas.usda')
+WHERE prim_path IN ('/World/Character/Skeleton', '/World/Smoke/Density', '/World/Speaker', '/World/Scatter');
+----
+/World/Character/Skeleton	0.0	5.0	0.0
+/World/Smoke/Density	0.0	-5.0	0.0
+/World/Speaker	-5.0	0.0	3.0
+/World/Scatter	0.0	0.0	0.0
+
+# Bounds: a skeleton covers its joints, a skinned character its posed geometry, a volume its extent
+
+query IIIIIII
+SELECT prim_path, min_x, min_y, min_z, max_x, max_y, max_z FROM usd_bounds('test/data/schemas.usda')
+WHERE prim_path IN ('/World/Character', '/World/Character/Skeleton', '/World/Smoke', '/World/Speaker');
+----
+/World/Character	-1.0	4.0	0.0	1.0	6.0	2.5
+/World/Character/Skeleton	0.0	5.0	1.0	0.0	5.0	1.5
+/World/Smoke	-1.0	-6.0	0.0	1.0	-4.0	2.0
+/World/Speaker	NULL	NULL	NULL	NULL	NULL	NULL
+
+# Schema fallbacks of a physics joint (infinite break forces are NULL)
+
+query III
+SELECT property_name, type_name, value::VARCHAR FROM usd_properties('test/data/schemas.usda')
+WHERE prim_path = '/World/Robot/Hinge' AND property_kind = 'attribute' AND NOT is_authored;
+----
+physics:breakForce	float	NULL
+physics:breakTorque	float	NULL
+physics:collisionEnabled	bool	false
+physics:excludeFromArticulation	bool	false
+physics:jointEnabled	bool	true
+physics:localRot0	quatf	{'imaginary': [0.0, 0.0, 0.0], 'real': 1.0}
+physics:localRot1	quatf	{'imaginary': [0.0, 0.0, 0.0], 'real': 1.0}
+purpose	token	default
+visibility	token	inherited
+
+# Typed values: mass, skeleton joints and semantic labels
+
+query III
+SELECT prim_path, property_name, value::VARCHAR FROM usd_properties('test/data/schemas.usda', authored_only := true)
+WHERE property_name IN ('physics:mass', 'joints', 'semantics:labels:class');
+----
+/World/Robot/Base	physics:mass	12.0
+/World/Character/Skeleton	joints	[Hips, Hips/Spine]
+/World/Character/Skeleton/Walk	joints	[Hips/Spine]
+/World/Pump	semantics:labels:class	[equipment, pump]
+
+# The physics joint graph, skeleton bindings and volume fields are relationships
+
+query III
+SELECT prim_path, relationship_name, target_path FROM usd_relationships('test/data/schemas.usda');
+----
+/World/Robot/Hinge	physics:body0	/World/Robot/Base
+/World/Robot/Hinge	physics:body1	/World/Robot/Arm
+/World/Character	skel:skeleton	/World/Character/Skeleton
+/World/Character/Skeleton	skel:animationSource	/World/Character/Skeleton/Walk
+/World/Smoke	field:density	/World/Smoke/Density

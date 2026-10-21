@@ -1,0 +1,54 @@
+# Local USD assets used only for benchmarking against real, large scenes.
+# Nothing under data/ may ever be tracked, and no names from those scenes may
+# appear in code, tests, or docs.
+/data/
+/assets/
+
+# Build output
+/build/
+
+# vcpkg checkout and installs
+/vcpkg/
+/vcpkg_installed/
+
+# DuckDB extension binaries
+*.duckdb_extension
+*.duckdb_extension.so
+*.duckdb_extension.dylib
+
+# CMake (in-source configure leftovers)
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Compiled files
+*.o
+*.so
+*.dylib
+*.a
+
+# Editors and tools
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+compile_commands.json
+.cache/
+.claude/
+
+# Test and benchmark artifacts
+test/data/*.duckdb
+test/data/*.db
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Local formatter environment (see CONTRIBUTING.md)
+/.fmtenv/
+
+# DuckDB test runner scratch space
+duckdb_unittest_tempdir/

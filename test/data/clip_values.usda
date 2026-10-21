@@ -1,0 +1,12 @@
+#usda 1.0
+(
+    doc = "A value clip, used by restricted/outside_clips.usda"
+)
+
+def Xform "Sensor"
+{
+    custom double reading.timeSamples = {
+        1: 42,
+        2: 43,
+    }
+}

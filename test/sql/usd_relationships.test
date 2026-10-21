@@ -1,0 +1,49 @@
+# name: test/sql/usd_relationships.test
+# description: usd_relationships - one row per relationship target
+# group: [sql]
+
+require usd
+
+query IIII
+SELECT prim_path, relationship_name, target_path, target_index FROM usd_relationships('test/data/relationships.usda');
+----
+/World/Node_01	connection	/World/Source_A	0
+/World/Node_02	connection	/World/Source_B	0
+/World/Node_02	peer	/World/Node_01	0
+/World/Node_03	connection	/World/Source_A	0
+/World/Node_03	connection	/World/Source_B	1
+/World/Node_03	watches	/World/Node_01.status	0
+/World/Device_01	connection	/World/Source_A	0
+/World/Device_01	parent	/World/Node_01	0
+/World/Device_01	uplink	/World/Node_03.connection	0
+
+# Relationships without targets produce no rows
+query I
+SELECT count(*) FROM usd_relationships('test/data/relationships.usda') WHERE relationship_name = 'spare';
+----
+0
+
+# forwarded := true follows relationships that target relationships
+query II
+SELECT target_path, target_index FROM usd_relationships('test/data/relationships.usda', forwarded := true) WHERE relationship_name = 'uplink';
+----
+/World/Source_A	0
+/World/Source_B	1
+
+# Graph analysis: how many prims depend on each source
+query II
+SELECT target_path, count(*) FROM usd_relationships('test/data/relationships.usda') WHERE relationship_name = 'connection' GROUP BY 1 ORDER BY 1;
+----
+/World/Source_A	3
+/World/Source_B	2
+
+# Join with usd_prims to describe the targets
+query III
+SELECT r.prim_path, r.target_path, p.kind
+FROM usd_relationships('test/data/relationships.usda') r
+JOIN usd_prims('test/data/relationships.usda') p ON r.target_path = p.prim_path
+WHERE r.prim_path = '/World/Node_03'
+ORDER BY r.target_index;
+----
+/World/Node_03	/World/Source_A	component
+/World/Node_03	/World/Source_B	component

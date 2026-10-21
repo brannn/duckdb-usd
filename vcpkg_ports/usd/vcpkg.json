@@ -1,0 +1,20 @@
+{
+  "name": "usd",
+  "version": "26.5",
+  "port-version": 101,
+  "description": "OpenUSD core and schema libraries as static libraries, for the duckdb-usd extension. Overlay of the microsoft/vcpkg usd port.",
+  "homepage": "https://github.com/PixarAnimationStudios/OpenUSD",
+  "license": null,
+  "supports": "static & (linux | osx) & !x86",
+  "dependencies": [
+    "tbb",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ]
+}

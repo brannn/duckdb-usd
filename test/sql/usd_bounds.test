@@ -1,0 +1,46 @@
+# name: test/sql/usd_bounds.test
+# description: usd_bounds - world space axis-aligned bounding boxes
+# group: [sql]
+
+require usd
+
+query IIIIIII
+SELECT prim_path, round(min_x, 6), round(min_y, 6), min_z, max_x, round(max_y, 6), max_z FROM usd_bounds('test/data/bounds.usda');
+----
+/Room	-1.414214	-1.0	-1.0	11.0	6.414214	1.0
+/Room/Crate	9.0	-1.0	-1.0	11.0	1.0	1.0
+/Room/Shelf	-1.414214	3.585786	-1.0	1.414214	6.414214	1.0
+/Room/Shelf/Board	-1.414214	3.585786	-1.0	1.414214	6.414214	1.0
+/Room/Helper	NULL	NULL	NULL	NULL	NULL	NULL
+/Room/Notes	NULL	NULL	NULL	NULL	NULL	NULL
+
+# Guide geometry only counts when its purpose is requested
+query IIII
+SELECT prim_path, min_x, max_x, max_z
+FROM usd_bounds('test/data/bounds.usda', purposes := ['default', 'render', 'guide'])
+WHERE prim_path IN ('/Room', '/Room/Helper');
+----
+/Room	-50.0	50.0	50.0
+/Room/Helper	-50.0	50.0	50.0
+
+# Sizes and overlaps follow directly from the bounds
+query IIII
+SELECT prim_path, max_x - min_x, max_y - min_y, max_z - min_z FROM usd_bounds('test/data/bounds.usda') WHERE prim_path = '/Room/Crate';
+----
+/Room/Crate	2.0	2.0	2.0
+
+query I
+SELECT count(*)
+FROM usd_bounds('test/data/bounds.usda') a, usd_bounds('test/data/bounds.usda') b
+WHERE a.prim_path < b.prim_path
+  AND a.prim_path NOT LIKE '/Room' AND b.prim_path NOT LIKE '/Room'
+  AND a.min_x <= b.max_x AND b.min_x <= a.max_x
+  AND a.min_y <= b.max_y AND b.min_y <= a.max_y
+  AND a.min_z <= b.max_z AND b.min_z <= a.max_z;
+----
+1
+
+statement error
+SELECT * FROM usd_bounds('test/data/bounds.usda', purposes := ['everything']);
+----
+Unknown purpose 'everything'

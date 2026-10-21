@@ -1,0 +1,19 @@
+diff --git a/pxr/usd/CMakeLists.txt b/pxr/usd/CMakeLists.txt
+index 6f436aa..8494c50 100644
+--- a/pxr/usd/CMakeLists.txt
++++ b/pxr/usd/CMakeLists.txt
+@@ -12,14 +12,10 @@ set(DIRS
+     usdLux
+     usdProc
+     usdRender
+-    usdHydra
+-    usdRi
+     usdSemantics
+     usdSkel
+     usdUI
+-    usdUtils
+     usdPhysics
+-    plugin
+ )
+ 
+ foreach(d ${DIRS})

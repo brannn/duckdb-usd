@@ -1,0 +1,61 @@
+#usda 1.0
+(
+    defaultPrim = "Yard"
+    endTimeCode = 24
+    metersPerUnit = 1
+    startTimeCode = 0
+    timeCodesPerSecond = 24
+    upAxis = "Z"
+)
+
+# Things that move or change over time: a truck under a translated parent, a recorded sensor value (with a blocked
+# sample), a log of alerts, a lift animated with a spline, and a sign that does not change
+
+def Xform "Yard"
+{
+    double3 xformOp:translate = (100, 0, 0)
+    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+    def Xform "Truck"
+    {
+        custom double speed.timeSamples = {
+            0: 0,
+            6: None,
+            12: 5,
+            24: 0,
+        }
+        custom string[] alerts.timeSamples = {
+            0: [],
+            12: ["overspeed"],
+            24: ["overspeed", "door open"],
+        }
+        double3 xformOp:translate.timeSamples = {
+            0: (0, 0, 0),
+            12: (10, 0, 0),
+            24: (10, 10, 0),
+        }
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cube "Cargo"
+        {
+            double size = 2
+            double3 xformOp:translate = (0, 0, 1)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+
+    def Xform "Lift"
+    {
+        custom double height
+        double height.spline = {
+            0: 0; post linear,
+            12: 3; post linear,
+            24: 3; post linear,
+        }
+    }
+
+    def Xform "Sign"
+    {
+        custom string label = "Gate"
+    }
+}

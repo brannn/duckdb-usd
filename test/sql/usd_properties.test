@@ -1,0 +1,217 @@
+# name: test/sql/usd_properties.test
+# description: usd_properties - property metadata and typed (VARIANT) values
+# group: [sql]
+
+require usd
+
+query IIIIIIIII
+SELECT property_name, property_kind, type_name, is_array, is_custom, is_authored, variability, time_sample_count, array_length
+FROM usd_properties('test/data/properties.usda', root := '/Sample');
+----
+big	attribute	int64	false	true	true	varying	0	NULL
+codes	attribute	int[]	true	true	true	varying	0	3
+count	attribute	int	false	true	true	varying	0	NULL
+feeds	relationship	NULL	NULL	true	true	uniform	NULL	1
+flag	attribute	bool	false	true	true	varying	0	NULL
+frame	attribute	matrix4d	false	true	true	varying	0	NULL
+label	attribute	string	false	true	true	varying	0	NULL
+manual	attribute	asset	false	true	true	varying	0	NULL
+mode	attribute	token	false	true	true	uniform	0	NULL
+offset	attribute	double3	false	true	true	varying	0	NULL
+orientation	attribute	quatf	false	true	true	varying	0	NULL
+rating	attribute	double	false	true	true	varying	0	NULL
+ratio	attribute	float	false	true	true	varying	0	NULL
+samples	attribute	float3[]	true	true	true	varying	0	2
+small	attribute	half	false	true	true	varying	0	NULL
+state	attribute	token	false	true	true	varying	0	NULL
+temperature	attribute	double	false	true	true	varying	2	NULL
+unset	attribute	string	false	true	true	varying	0	NULL
+unsigned_value	attribute	uint	false	true	true	varying	0	NULL
+
+# Values are VARIANTs that keep their type: cast them to what you need
+query II
+SELECT property_name, value::DOUBLE
+FROM usd_properties('test/data/properties.usda')
+WHERE property_name IN ('big', 'count', 'rating', 'ratio', 'small', 'unsigned_value')
+ORDER BY 1;
+----
+big	9000000000.0
+count	42.0
+rating	1250.5
+ratio	0.25
+small	0.5
+unsigned_value	7.0
+
+query I
+SELECT value::BIGINT * 2 FROM usd_properties('test/data/properties.usda') WHERE property_name = 'big';
+----
+18000000000
+
+query II
+SELECT property_name, value::VARCHAR
+FROM usd_properties('test/data/properties.usda')
+WHERE property_name IN ('flag', 'label', 'state', 'manual', 'mode')
+ORDER BY 1;
+----
+flag	true
+label	unit "alpha"
+manual	./docs/manual.pdf
+mode	auto
+state	online
+
+query I
+SELECT value::BOOLEAN FROM usd_properties('test/data/properties.usda') WHERE property_name = 'flag';
+----
+true
+
+# Vectors, arrays and matrices become lists
+query I
+SELECT value::DOUBLE[] FROM usd_properties('test/data/properties.usda') WHERE property_name = 'offset';
+----
+[1.0, 2.0, 3.0]
+
+query I
+SELECT value::INTEGER[] FROM usd_properties('test/data/properties.usda') WHERE property_name = 'codes';
+----
+[3, 1, 2]
+
+query I
+SELECT value::DOUBLE[][] FROM usd_properties('test/data/properties.usda') WHERE property_name = 'samples';
+----
+[[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]
+
+query I
+SELECT (value::DOUBLE[][])[4] FROM usd_properties('test/data/properties.usda') WHERE property_name = 'frame';
+----
+[5.0, 6.0, 7.0, 1.0]
+
+query II
+SELECT value.real::DOUBLE, value.imaginary::DOUBLE[] FROM usd_properties('test/data/properties.usda', root := '/Sample') WHERE property_name = 'orientation';
+----
+1.0	[0.0, 0.0, 0.0]
+
+# A relationship's value is the list of its targets
+query II
+SELECT value::VARCHAR[], array_length FROM usd_properties('test/data/properties.usda') WHERE property_name = 'feeds';
+----
+[/Box]	1
+
+# No value: declared without one, or only time samples (read at the default time)
+query II
+SELECT property_name, value IS NULL FROM usd_properties('test/data/properties.usda') WHERE property_name IN ('unset', 'temperature') ORDER BY 1;
+----
+temperature	true
+unset	true
+
+# time := reads time samples (interpolated)
+query I
+SELECT value::DOUBLE FROM usd_properties('test/data/properties.usda', time := 5) WHERE property_name = 'temperature';
+----
+25.0
+
+# Arrays longer than max_array_length have a NULL value (array_length still reports their size)
+query III
+SELECT property_name, array_length, value IS NULL
+FROM usd_properties('test/data/properties.usda', max_array_length := 2)
+WHERE array_length IS NOT NULL AND prim_path = '/Sample'
+ORDER BY 1;
+----
+codes	3	true
+feeds	1	false
+samples	2	false
+
+# 0 means unlimited
+query I
+SELECT count(*) FROM usd_properties('test/data/properties.usda', max_array_length := 0) WHERE array_length IS NOT NULL AND value IS NULL;
+----
+0
+
+# Schema properties exist without being authored: authored_only := true skips them
+query III
+SELECT property_name, is_authored, value::VARCHAR FROM usd_properties('test/data/properties.usda', root := '/Box') ORDER BY 1;
+----
+doubleSided	false	false
+extent	false	[[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]]
+orientation	false	rightHanded
+primvars:displayColor	false	NULL
+primvars:displayOpacity	false	NULL
+proxyPrim	false	[]
+purpose	false	default
+size	true	3.0
+visibility	false	inherited
+xformOpOrder	false	NULL
+
+query I
+SELECT property_name FROM usd_properties('test/data/properties.usda', root := '/Box', authored_only := true);
+----
+size
+
+statement error
+SELECT * FROM usd_properties('test/data/properties.usda', max_array_length := -1);
+----
+must be 0 (unlimited) or positive
+
+# Filters that compare property_name with constants (=, IN, OR) are applied while scanning: only those properties
+# are read, and the query's other conditions only see their values. DuckDB may evaluate the cast below before the
+# property_name condition, which would fail on the values of other properties (strings, numbers).
+query I
+SELECT prim_path FROM usd_properties('test/data/properties.usda')
+WHERE property_name = 'codes' AND list_contains(value::VARCHAR[], '2');
+----
+/Sample
+
+query II
+EXPLAIN SELECT prim_path FROM usd_properties('test/data/properties.usda')
+WHERE property_name IN ('rating', 'codes') AND value IS NOT NULL;
+----
+physical_plan	<REGEX>:.*Property Names: codes, rating.*
+
+query II
+SELECT property_name, value::VARCHAR FROM usd_properties('test/data/properties.usda')
+WHERE property_name IN ('rating', 'count') OR property_name = 'flag'
+ORDER BY property_name;
+----
+count	42
+flag	true
+rating	1250.5
+
+# Several conditions: the names all of them accept
+query I
+SELECT property_name FROM usd_properties('test/data/properties.usda')
+WHERE property_name IN ('rating', 'count') AND property_name IN ('count', 'flag');
+----
+count
+
+# Schema properties without opinions and relationships are found the same way; names that match no property (or
+# could not be one) find nothing
+query III
+SELECT prim_path, property_name, is_authored FROM usd_properties('test/data/properties.usda')
+WHERE property_name IN ('visibility', 'feeds', 'size', 'missing', 'not a name!', NULL)
+ORDER BY ALL;
+----
+/Box	size	true
+/Box	visibility	false
+/Sample	feeds	true
+
+# A condition in a LEFT JOIN keeps the prims without the property
+query II
+SELECT p.prim_path, q.value::DOUBLE FROM usd_prims('test/data/properties.usda') p
+LEFT JOIN usd_properties('test/data/properties.usda') q ON q.prim_path = p.prim_path AND q.property_name = 'rating'
+ORDER BY ALL;
+----
+/Box	NULL
+/Sample	1250.5
+
+# Comparisons the scan does not apply itself (a collation, a parameter) still filter correctly
+query I
+SELECT property_name FROM usd_properties('test/data/properties.usda') WHERE property_name = 'RATING' COLLATE NOCASE;
+----
+rating
+
+statement ok
+PREPARE named AS SELECT value::DOUBLE FROM usd_properties('test/data/properties.usda') WHERE property_name = $1;
+
+query I
+EXECUTE named('rating');
+----
+1250.5

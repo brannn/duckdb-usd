@@ -1,0 +1,21 @@
+diff --git a/cmake/macros/Private.cmake b/cmake/macros/Private.cmake
+index 67912a4..7e29f08 100644
+--- a/cmake/macros/Private.cmake
++++ b/cmake/macros/Private.cmake
+@@ -916,13 +916,13 @@ function(_pxr_target_link_libraries NAME)
+                 # all provided by the first.  The order doesn't really
+                 # matter; we pull in the whole archive first.
+                 #
+-                list(APPEND final -WHOLEARCHIVE:$<TARGET_FILE:${lib}>)
++                list(APPEND final "$<BUILD_INTERFACE:-WHOLEARCHIVE:$<TARGET_FILE:${lib}>>")
+                 list(APPEND final ${lib})
+             elseif(CMAKE_COMPILER_IS_GNUCXX OR EMSCRIPTEN)
+-                list(APPEND final -Wl,--whole-archive ${lib} -Wl,--no-whole-archive)
++                list(APPEND final "$<BUILD_INTERFACE:-Wl,--whole-archive>" ${lib} "$<BUILD_INTERFACE:-Wl,--no-whole-archive>")
+                 add_dependencies(${NAME} ${lib})
+             elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+-                list(APPEND final -Wl,-force_load ${lib})
++                list(APPEND final "$<BUILD_INTERFACE:-Wl,-force_load>" ${lib})
+                 add_dependencies(${NAME} ${lib})
+             else()
+                 # Unknown platform.

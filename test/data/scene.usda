@@ -1,0 +1,84 @@
+#usda 1.0
+(
+    customLayerData = {
+        string generator = "hand written"
+        int revision = 3
+    }
+    defaultPrim = "Site"
+    doc = "Synthetic scene for the usd extension tests"
+    endTimeCode = 10
+    metersPerUnit = 0.01
+    startTimeCode = 0
+    timeCodesPerSecond = 24
+    upAxis = "Z"
+)
+
+def Xform "Site" (
+    customData = {
+        int floor_count = 2
+        string owner = "facilities"
+    }
+    kind = "assembly"
+)
+{
+    def Xform "Zone_A" (
+        kind = "group"
+    )
+    {
+        def Cube "Unit_001" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+            assetInfo = {
+                string identifier = "unit-001"
+                string version = "2"
+            }
+            kind = "component"
+        )
+        {
+            double size = 2
+        }
+
+        def Sphere "Probe"
+        {
+            double radius = 0.5
+        }
+
+        # A prim without a type
+        def "Marker"
+        {
+        }
+    }
+
+    def Xform "Zone_B" (
+        kind = "group"
+    )
+    {
+        def Cylinder "Pipe"
+        {
+            double height = 4
+            double radius = 0.25
+        }
+
+        # Inactive: the prim itself is visible to the scan, its children are not composed
+        def Xform "Retired" (
+            active = false
+        )
+        {
+            def Cube "Leftover"
+            {
+            }
+        }
+    }
+
+    # Abstract prims are skipped unless include_abstract := true
+    class Xform "_UnitTemplate"
+    {
+        def Cube "Body"
+        {
+        }
+    }
+
+    # Undefined prims are skipped unless include_undefined := true
+    over "Annotations"
+    {
+    }
+}

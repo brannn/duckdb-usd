@@ -1,0 +1,60 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+)
+
+def Xform "World"
+{
+    def "Source_A" (
+        kind = "component"
+    )
+    {
+    }
+
+    def "Source_B" (
+        kind = "component"
+    )
+    {
+    }
+
+    def "Node_01" (
+        kind = "component"
+    )
+    {
+        custom token status = "ok"
+        rel connection = </World/Source_A>
+    }
+
+    def "Node_02" (
+        kind = "component"
+    )
+    {
+        rel connection = </World/Source_B>
+        # Relative targets are reported as absolute paths
+        rel peer = <../Node_01>
+    }
+
+    def "Node_03" (
+        kind = "component"
+    )
+    {
+        rel connection = [
+            </World/Source_A>,
+            </World/Source_B>,
+        ]
+        # Targets a property rather than a prim
+        rel watches = </World/Node_01.status>
+        # Declared without targets: produces no rows
+        rel spare
+    }
+
+    def "Device_01" (
+        kind = "component"
+    )
+    {
+        rel connection = </World/Source_A>
+        rel parent = </World/Node_01>
+        # Targets another relationship: forwarded := true reports that relationship's targets instead
+        rel uplink = </World/Node_03.connection>
+    }
+}

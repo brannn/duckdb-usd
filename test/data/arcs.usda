@@ -1,0 +1,60 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+)
+
+class "_AssetClass"
+{
+    custom string label = "from root"
+}
+
+class "_Base"
+{
+    custom double weight = 1
+}
+
+def Xform "World"
+{
+    # An inherit with opinions and one of a class nobody defines
+    def Xform "Inheriting" (
+        inherits = [</_Base>, </_Undefined>]
+    )
+    {
+    }
+
+    def Xform "Specializing" (
+        specializes = </_Base>
+    )
+    {
+    }
+
+    # The referenced prim inherits _AssetClass, which implies an inherit of the root layer's _AssetClass
+    def Xform "External" (
+        references = @./arcs_asset.usda@
+    )
+    {
+    }
+
+    def Xform "Instanced_1" (
+        instanceable = true
+        references = </_Template>
+    )
+    {
+    }
+
+    def Xform "Instanced_2" (
+        instanceable = true
+        references = </_Template>
+    )
+    {
+    }
+}
+
+class Xform "_Template"
+{
+    def Xform "Inner" (
+        references = @./arcs_asset.usda@
+    )
+    {
+    }
+}

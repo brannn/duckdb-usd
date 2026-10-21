@@ -1,0 +1,11 @@
+#usda 1.0
+(
+    doc = "Sublayer of composition.usda"
+)
+
+over "Plant"
+{
+    def Xform "FromSublayer"
+    {
+    }
+}

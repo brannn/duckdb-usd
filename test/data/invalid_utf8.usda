@@ -1,0 +1,14 @@
+#usda 1.0
+(
+    doc = "bad \xff byte"
+)
+
+def Xform "Device" (
+    customData = {
+        string note = "x\xfey"
+    }
+    kind = "odd\xffkind"
+)
+{
+    custom string label = "caf\xc3\xa9 \xed\xa0\x80 end"
+}

@@ -1,0 +1,164 @@
+# name: test/sql/usd_time.test
+# description: usd_time_samples, and reading values, transforms and bounds at several times with the times option
+# group: [sql]
+
+require usd
+
+# Expected rows come from OpenUSD (Python): UsdAttribute.GetTimeSamples (GetSpline().GetKnots() for splines) and
+# Get(time), UsdGeom.XformCache(time) and UsdGeom.BBoxCache(time)
+
+# Every time sample of every attribute: a blocked sample has a NULL value, a spline lists its knots, and a static
+# attribute has no rows
+query IIIIII
+SELECT prim_path, property_name, type_name, time, array_length, value::VARCHAR
+FROM usd_time_samples('test/data/animation.usda');
+----
+/Yard/Truck	alerts	string[]	0.0	0	[]
+/Yard/Truck	alerts	string[]	12.0	1	[overspeed]
+/Yard/Truck	alerts	string[]	24.0	2	[overspeed, door open]
+/Yard/Truck	speed	double	0.0	NULL	0.0
+/Yard/Truck	speed	double	6.0	NULL	NULL
+/Yard/Truck	speed	double	12.0	NULL	5.0
+/Yard/Truck	speed	double	24.0	NULL	0.0
+/Yard/Truck	xformOp:translate	double3	0.0	NULL	[0.0, 0.0, 0.0]
+/Yard/Truck	xformOp:translate	double3	12.0	NULL	[10.0, 0.0, 0.0]
+/Yard/Truck	xformOp:translate	double3	24.0	NULL	[10.0, 10.0, 0.0]
+/Yard/Lift	height	double	0.0	NULL	0.0
+/Yard/Lift	height	double	12.0	NULL	3.0
+/Yard/Lift	height	double	24.0	NULL	3.0
+
+# A closed interval of time
+query III
+SELECT prim_path, property_name, time FROM usd_time_samples('test/data/animation.usda', start_time := 6, end_time := 12);
+----
+/Yard/Truck	alerts	12.0
+/Yard/Truck	speed	6.0
+/Yard/Truck	speed	12.0
+/Yard/Truck	xformOp:translate	12.0
+/Yard/Lift	height	12.0
+
+query II
+SELECT property_name, time FROM usd_time_samples('test/data/animation.usda', start_time := 20) WHERE prim_path = '/Yard/Truck';
+----
+alerts	24.0
+speed	24.0
+xformOp:translate	24.0
+
+# Arrays longer than max_array_length have a NULL value, but keep their length
+query III
+SELECT time, array_length, value::VARCHAR FROM usd_time_samples('test/data/animation.usda', max_array_length := 1)
+WHERE property_name = 'alerts';
+----
+0.0	0	[]
+12.0	1	[overspeed]
+24.0	2	NULL
+
+# Typed values: cast them
+query II
+SELECT time, value::DOUBLE[] FROM usd_time_samples('test/data/animation.usda') WHERE property_name = 'xformOp:translate';
+----
+0.0	[0.0, 0.0, 0.0]
+12.0	[10.0, 0.0, 0.0]
+24.0	[10.0, 10.0, 0.0]
+
+# Samples read from a value clip
+query III
+SELECT property_name, time, value::DOUBLE FROM usd_time_samples('test/data/restricted/outside_clips.usda');
+----
+reading	1.0	42.0
+reading	2.0	43.0
+
+# World positions at several times: one row per prim and time, with a time column
+query IIIII
+SELECT time, prim_path, x, y, z FROM usd_xforms('test/data/animation.usda', times := range(0, 25, 6))
+WHERE prim_path IN ('/Yard/Truck', '/Yard/Truck/Cargo', '/Yard/Sign')
+ORDER BY prim_path, time;
+----
+0.0	/Yard/Sign	100.0	0.0	0.0
+6.0	/Yard/Sign	100.0	0.0	0.0
+12.0	/Yard/Sign	100.0	0.0	0.0
+18.0	/Yard/Sign	100.0	0.0	0.0
+24.0	/Yard/Sign	100.0	0.0	0.0
+0.0	/Yard/Truck	100.0	0.0	0.0
+6.0	/Yard/Truck	105.0	0.0	0.0
+12.0	/Yard/Truck	110.0	0.0	0.0
+18.0	/Yard/Truck	110.0	5.0	0.0
+24.0	/Yard/Truck	110.0	10.0	0.0
+0.0	/Yard/Truck/Cargo	100.0	0.0	1.0
+6.0	/Yard/Truck/Cargo	105.0	0.0	1.0
+12.0	/Yard/Truck/Cargo	110.0	0.0	1.0
+18.0	/Yard/Truck/Cargo	110.0	5.0	1.0
+24.0	/Yard/Truck/Cargo	110.0	10.0	1.0
+
+# Each row's local matrix is read at its own time
+query III
+SELECT time, local_matrix[13], local_matrix[14] FROM usd_xforms('test/data/animation.usda', times := [0, 24])
+WHERE prim_path = '/Yard/Truck' ORDER BY time;
+----
+0.0	0.0	0.0
+24.0	10.0	10.0
+
+# The same as reading at each time on its own
+query I
+SELECT count(*) FROM (
+    SELECT prim_path, x, y, z, world_matrix FROM usd_xforms('test/data/animation.usda', times := [18]) EXCEPT ALL
+    SELECT prim_path, x, y, z, world_matrix FROM usd_xforms('test/data/animation.usda', time := 18));
+----
+0
+
+# The time column follows the function's columns, before the filename column
+query I
+SELECT list(column_name)[-3:]
+FROM (DESCRIBE SELECT * FROM usd_xforms('test/data/animation.usda', times := [0], filename := true));
+----
+[time_varying, time, filename]
+
+# Bounds move with their prim
+query IIIIIII
+SELECT time, min_x, min_y, min_z, max_x, max_y, max_z FROM usd_bounds('test/data/animation.usda', times := [0, 12, 24])
+WHERE prim_path = '/Yard/Truck/Cargo' ORDER BY time;
+----
+0.0	99.0	-1.0	0.0	101.0	1.0	2.0
+12.0	109.0	-1.0	0.0	111.0	1.0	2.0
+24.0	109.0	9.0	0.0	111.0	11.0	2.0
+
+# Values between samples are interpolated (linearly, or along the spline); a blocked sample holds until the next
+query IIII
+SELECT time, prim_path, property_name, value::VARCHAR FROM usd_properties('test/data/animation.usda', times := [6, 18])
+WHERE property_name IN ('speed', 'height', 'alerts') ORDER BY time, prim_path DESC, property_name DESC;
+----
+6.0	/Yard/Truck	speed	NULL
+6.0	/Yard/Truck	alerts	[]
+6.0	/Yard/Lift	height	1.5
+18.0	/Yard/Truck	speed	2.5
+18.0	/Yard/Truck	alerts	[overspeed]
+18.0	/Yard/Lift	height	3.0
+
+# Many prims at many times: every prim at every time, across batches of prims and output chunks
+query III
+SELECT count(*), count(DISTINCT prim_path), count(DISTINCT (prim_path, time))
+FROM usd_xforms('test/data/grid.usda', times := range(0, 10));
+----
+30510	3051	30510
+
+# A filter on property_name is applied while scanning: the other conditions only see that attribute's samples
+query II
+SELECT time, value::DOUBLE FROM usd_time_samples('test/data/animation.usda')
+WHERE property_name = 'speed' AND value::DOUBLE > 4;
+----
+12.0	5.0
+
+query II
+EXPLAIN SELECT time FROM usd_time_samples('test/data/animation.usda') WHERE property_name IN ('speed', 'height');
+----
+physical_plan	<REGEX>:.*Property Names: height, speed.*
+
+query III
+SELECT prim_path, property_name, time FROM usd_time_samples('test/data/animation.usda')
+WHERE property_name IN ('speed', 'height', 'label', 'xformOpOrder') AND time >= 12
+ORDER BY ALL;
+----
+/Yard/Lift	height	12.0
+/Yard/Lift	height	24.0
+/Yard/Truck	speed	12.0
+/Yard/Truck	speed	24.0

@@ -1,0 +1,109 @@
+# name: test/sql/usd_material_bindings.test
+# description: usd_material_bindings - the material each prim is bound to, and the binding that decides it
+# group: [sql]
+
+require usd
+
+# Expected rows come from OpenUSD's UsdShadeMaterialBindingAPI.ComputeBoundMaterial (Python).
+# Materials, shaders and the other prims that are not imageable get no row.
+
+query IIIIIIIII
+SELECT * FROM usd_material_bindings('test/data/materials.usda');
+----
+/World	/World/Looks/Default	true	direct	NULL	/World	false	weakerThanDescendants	allPurpose
+/World/Looks	/World/Looks/Default	true	direct	NULL	/World	true	weakerThanDescendants	allPurpose
+/World/Geo	/World/Looks/Default	true	direct	NULL	/World	true	weakerThanDescendants	allPurpose
+/World/Geo/Direct	/World/Looks/Red	true	direct	NULL	/World/Geo/Direct	false	weakerThanDescendants	allPurpose
+/World/Geo/Inherited	/World/Looks/Default	true	direct	NULL	/World	true	weakerThanDescendants	allPurpose
+/World/Geo/Purposes	/World/Looks/Red	true	direct	NULL	/World/Geo/Purposes	false	weakerThanDescendants	allPurpose
+/World/Geo/Missing	/World/Looks/DoesNotExist	false	direct	NULL	/World/Geo/Missing	false	weakerThanDescendants	allPurpose
+/World/Geo/WrongTarget	/World/Geo	false	direct	NULL	/World/Geo/WrongTarget	false	weakerThanDescendants	allPurpose
+/World/Geo/Legacy	/World/Looks/Blue	true	direct	NULL	/World/Geo/Legacy	false	weakerThanDescendants	allPurpose
+/World/Geo/Collected	/World/Looks/Metal	true	collection	/World.collection:metal	/World	true	weakerThanDescendants	allPurpose
+/World/Geo/Subsets	/World/Looks/Default	true	direct	NULL	/World	true	weakerThanDescendants	allPurpose
+/World/Geo/Subsets/Top	/World/Looks/Blue	true	direct	NULL	/World/Geo/Subsets/Top	false	weakerThanDescendants	allPurpose
+/World/Strong	/World/Looks/Blue	true	direct	NULL	/World/Strong	false	strongerThanDescendants	allPurpose
+/World/Strong/Overridden	/World/Looks/Blue	true	direct	NULL	/World/Strong	true	strongerThanDescendants	allPurpose
+/World/Instances	/World/Looks/Default	true	direct	NULL	/World	true	weakerThanDescendants	allPurpose
+/World/Instances/One	/World/Looks/Default	true	direct	NULL	/World	true	weakerThanDescendants	allPurpose
+/World/Instances/Two	/World/Looks/Default	true	direct	NULL	/World	true	weakerThanDescendants	allPurpose
+
+# A purpose-specific binding wins over the all-purpose one; where there is none, the all-purpose binding applies
+
+query IIIIIIIII
+SELECT * FROM usd_material_bindings('test/data/materials.usda', material_purpose := 'preview')
+WHERE prim_path IN ('/World/Geo/Purposes', '/World/Geo/Collected');
+----
+/World/Geo/Purposes	/World/Looks/Preview	true	direct	NULL	/World/Geo/Purposes	false	weakerThanDescendants	preview
+/World/Geo/Collected	/World/Looks/Metal	true	collection	/World.collection:metal	/World	true	weakerThanDescendants	allPurpose
+
+query IIIIIIIII
+SELECT * FROM usd_material_bindings('test/data/materials.usda', material_purpose := 'full')
+WHERE prim_path IN ('/World/Geo/Purposes', '/World/Geo/Collected');
+----
+/World/Geo/Purposes	/World/Looks/Blue	true	direct	NULL	/World/Geo/Purposes	false	weakerThanDescendants	full
+/World/Geo/Collected	/World/Looks/Red	true	collection	/World.collection:metal	/World	true	weakerThanDescendants	full
+
+query I
+SELECT count(*) FROM usd_material_bindings('test/data/materials.usda', material_purpose := 'allPurpose');
+----
+17
+
+# Inside instances, the binding is reported on the instance proxy that holds it
+
+query IIII
+SELECT prim_path, material_path, binding_prim_path, inherited
+FROM usd_material_bindings('test/data/materials.usda', instance_proxies := true)
+WHERE prim_path LIKE '/World/Instances/%/%';
+----
+/World/Instances/One/Part	/World/Looks/Red	/World/Instances/One/Part	false
+/World/Instances/One/Plain	/World/Looks/Default	/World	true
+/World/Instances/Two/Part	/World/Looks/Red	/World/Instances/Two/Part	false
+/World/Instances/Two/Plain	/World/Looks/Default	/World	true
+
+# Prims per material
+
+query II
+SELECT material_path, count(*) FROM usd_material_bindings('test/data/materials.usda')
+GROUP BY ALL ORDER BY ALL;
+----
+/World/Geo	1
+/World/Looks/Blue	4
+/World/Looks/Default	8
+/World/Looks/DoesNotExist	1
+/World/Looks/Metal	1
+/World/Looks/Red	2
+
+# Bindings to something that is not a material
+
+query II
+SELECT prim_path, material_path FROM usd_material_bindings('test/data/materials.usda') WHERE NOT material_found;
+----
+/World/Geo/Missing	/World/Looks/DoesNotExist
+/World/Geo/WrongTarget	/World/Geo
+
+# Only the subtree under root
+
+query I
+SELECT count(*) FROM usd_material_bindings('test/data/materials.usda', root := '/World/Strong');
+----
+2
+
+# Options
+
+statement error
+SELECT * FROM usd_material_bindings('test/data/materials.usda', material_purpose := 'render');
+----
+Unknown material purpose 'render' - expected 'allPurpose', 'full' or 'preview'
+
+statement error
+SELECT * FROM usd_material_bindings('test/data/materials.usda', material_purpose := NULL);
+----
+The "material_purpose" option cannot be NULL
+
+# A stage without bindings
+
+query I
+SELECT count(*) FROM usd_material_bindings('test/data/minimal_scene.usda');
+----
+0

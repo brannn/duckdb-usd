@@ -1,0 +1,136 @@
+# name: test/sql/usd_errors.test
+# description: invalid inputs and files
+# group: [sql]
+
+require usd
+
+statement error
+SELECT * FROM usd_prims('test/data/does_not_exist.usda');
+----
+USD file not found
+
+statement error
+SELECT * FROM usd_prims('test/data/');
+----
+is a directory
+
+statement error
+SELECT * FROM usd_prims('');
+----
+USD file path cannot be empty
+
+statement error
+SELECT * FROM usd_prims('   ');
+----
+USD file path cannot be empty
+
+statement error
+SELECT * FROM usd_prims(NULL);
+----
+cannot be NULL
+
+statement error
+SELECT * FROM usd_prims('test/data/not_a_usd_file.txt');
+----
+Not a USD file
+
+statement error
+SELECT * FROM usd_prims('test/data/malformed.usda');
+----
+Failed to open USD stage
+
+statement error
+SELECT * FROM usd_prims(123);
+----
+No function matches
+
+statement error
+SELECT * FROM usd_prims();
+----
+No function matches
+
+statement error
+SELECT * FROM usd_prims('test/data/scene.usda', 'test/data/scene.usda');
+----
+No function matches
+
+statement error
+SELECT * FROM usd_prims('s3://bucket/scene.usda');
+----
+remote USD files is not supported
+
+statement error
+SELECT * FROM usd_prims('test/data/scene.usda', not_an_option := true);
+----
+not_an_option
+
+statement error
+SELECT * FROM usd_prims('test/data/scene.usda', instance_proxies := NULL);
+----
+cannot be NULL
+
+statement error
+SELECT * FROM usd_properties('test/data/scene.usda', time := NULL);
+----
+cannot be NULL
+
+# Only the functions whose rows depend on time take a time
+statement error
+SELECT * FROM usd_prims('test/data/scene.usda', time := 1);
+----
+time
+
+statement error
+SELECT * FROM usd_relationships('test/data/scene.usda', times := [1, 2]);
+----
+times
+
+statement error
+SELECT * FROM usd_xforms('test/data/scene.usda', time := 1, times := [1, 2]);
+----
+cannot be combined
+
+statement error
+SELECT * FROM usd_xforms('test/data/scene.usda', times := []);
+----
+cannot be empty
+
+statement error
+SELECT * FROM usd_bounds('test/data/scene.usda', times := [1, NULL]);
+----
+cannot contain NULL
+
+statement error
+SELECT * FROM usd_properties('test/data/scene.usda', times := NULL);
+----
+cannot be NULL
+
+statement error
+SELECT * FROM usd_time_samples('test/data/scene.usda', time := 1);
+----
+time
+
+statement error
+SELECT * FROM usd_time_samples('test/data/scene.usda', start_time := 10, end_time := 5);
+----
+cannot be after
+
+statement error
+SELECT * FROM usd_time_samples('test/data/scene.usda', max_array_length := -1);
+----
+must be 0 (unlimited) or positive
+
+# Every function validates its input the same way
+foreach function usd_properties usd_relationships usd_xforms usd_bounds usd_variants usd_layers usd_stage_metadata usd_composition_errors usd_composition_arcs usd_material_bindings usd_time_samples
+
+statement error
+SELECT * FROM {function}('test/data/does_not_exist.usda');
+----
+USD file not found
+
+statement error
+SELECT * FROM {function}('test/data/malformed.usda');
+----
+Failed to open USD stage
+
+endloop

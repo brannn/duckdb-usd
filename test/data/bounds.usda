@@ -1,0 +1,45 @@
+#usda 1.0
+(
+    defaultPrim = "Room"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "Room"
+{
+    def Cube "Crate"
+    {
+        double size = 2
+        double3 xformOp:translate = (10, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Xform "Shelf"
+    {
+        double3 xformOp:rotateXYZ = (0, 0, 45)
+        double3 xformOp:translate = (0, 5, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+        def Cube "Board"
+        {
+            double size = 2
+        }
+    }
+
+    # Guide geometry is excluded from bounds unless requested with purposes := [...]
+    def Cube "Helper"
+    {
+        uniform token purpose = "guide"
+        double size = 100
+    }
+
+    # Imageable but without geometry: bounds are NULL
+    def Scope "Notes"
+    {
+    }
+
+    # Not imageable: no row
+    def "Untyped"
+    {
+    }
+}

@@ -1,0 +1,149 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+# One prim (or a few) of each OpenUSD schema domain beyond usdGeom, usdShade and usdLux
+
+def Xform "World"
+{
+    def PhysicsScene "PhysicsScene"
+    {
+        vector3f physics:gravityDirection = (0, 0, -1)
+        float physics:gravityMagnitude = 9.81
+    }
+
+    def Xform "Robot" (
+        prepend apiSchemas = ["PhysicsArticulationRootAPI"]
+    )
+    {
+        double3 xformOp:translate = (10, 0, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cube "Base" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsCollisionAPI", "PhysicsMassAPI"]
+        )
+        {
+            float physics:mass = 12
+        }
+
+        def Cube "Arm" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsCollisionAPI"]
+        )
+        {
+            double size = 0.5
+            double3 xformOp:translate = (0, 0, 1)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+
+        def PhysicsRevoluteJoint "Hinge"
+        {
+            rel physics:body0 = </World/Robot/Base>
+            rel physics:body1 = </World/Robot/Arm>
+            uniform token physics:axis = "Y"
+            float physics:lowerLimit = -90
+            float physics:upperLimit = 90
+            point3f physics:localPos0 = (0, 0, 0.5)
+            point3f physics:localPos1 = (0, 0, -0.25)
+        }
+    }
+
+    def SkelRoot "Character" (
+        prepend apiSchemas = ["SkelBindingAPI"]
+    )
+    {
+        double3 xformOp:translate = (0, 5, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+        rel skel:skeleton = </World/Character/Skeleton>
+
+        def Skeleton "Skeleton" (
+            prepend apiSchemas = ["SkelBindingAPI"]
+        )
+        {
+            uniform token[] joints = ["Hips", "Hips/Spine"]
+            uniform matrix4d[] bindTransforms = [((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 1, 1)), ((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 1.5, 1))]
+            uniform matrix4d[] restTransforms = [((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 1, 1)), ((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0.5, 1))]
+            rel skel:animationSource = </World/Character/Skeleton/Walk>
+
+            def SkelAnimation "Walk"
+            {
+                uniform token[] joints = ["Hips/Spine"]
+                quatf[] rotations.timeSamples = {
+                    0: [(1, 0, 0, 0)],
+                    10: [(0.9659258, 0, 0.258819, 0)],
+                }
+            }
+        }
+
+        def Mesh "Body" (
+            prepend apiSchemas = ["SkelBindingAPI"]
+        )
+        {
+            float3[] extent = [(-0.5, 0, 0), (0.5, 0, 2)]
+            int[] faceVertexCounts = [4]
+            int[] faceVertexIndices = [0, 1, 2, 3]
+            point3f[] points = [(-0.5, 0, 0), (0.5, 0, 0), (0.5, 0, 2), (-0.5, 0, 2)]
+            int[] primvars:skel:jointIndices = [0, 0, 1, 1] (
+                elementSize = 1
+                interpolation = "vertex"
+            )
+            float[] primvars:skel:jointWeights = [1, 1, 1, 1] (
+                elementSize = 1
+                interpolation = "vertex"
+            )
+        }
+    }
+
+    def Volume "Smoke"
+    {
+        float3[] extent = [(-1, -1, 0), (1, 1, 2)]
+        rel field:density = </World/Smoke/Density>
+        double3 xformOp:translate = (0, -5, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def OpenVDBAsset "Density"
+        {
+            asset filePath = @smoke.vdb@
+            token fieldName = "density"
+        }
+    }
+
+    def SpatialAudio "Speaker"
+    {
+        uniform asset filePath = @chime.wav@
+        uniform token auralMode = "spatial"
+        double3 xformOp:translate = (-5, 0, 3)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Cube "Pump" (
+        prepend apiSchemas = ["SemanticsLabelsAPI:class"]
+    )
+    {
+        token[] semantics:labels:class = ["equipment", "pump"]
+        double3 xformOp:translate = (0, 0, 0.5)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def GenerativeProcedural "Scatter"
+    {
+        token proceduralSystem = "example"
+    }
+}
+
+def Scope "Render"
+{
+    def RenderSettings "Settings"
+    {
+        uniform int2 resolution = (1920, 1080)
+    }
+}
+
+def Backdrop "Notes" (
+    prepend apiSchemas = ["SceneGraphPrimAPI"]
+)
+{
+    uniform token ui:description = "Layout notes"
+}

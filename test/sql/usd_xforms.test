@@ -1,0 +1,80 @@
+# name: test/sql/usd_xforms.test
+# description: usd_xforms - world space transforms of xformable prims
+# group: [sql]
+
+require usd
+
+query IIII
+SELECT prim_path, x, y, z FROM usd_xforms('test/data/transforms.usda');
+----
+/World	0.0	0.0	0.0
+/World/Origin	0.0	0.0	0.0
+/World/Object_A	10.0	0.0	0.0
+/World/Object_B	10.0	0.0	5.0
+/World/Object_C	20.0	0.0	5.0
+/World/Anchor	15.0	0.0	0.0
+/World/Rotated	5.0	2.0	3.0
+/World/Scaled	0.0	5.0	0.0
+/World/Group	100.0	0.0	0.0
+/World/Group/Child_1	100.0	0.0	5.0
+/World/Group/Child_2	100.0	0.0	10.0
+/World/Group/Detached	1.0	1.0	1.0
+/World/Animated	0.0	0.0	0.0
+/World/Matrix	7.0	8.0	9.0
+
+# Rotation is reported as XYZ Euler angles (degrees), matching xformOp:rotateXYZ
+query IIIII
+SELECT prim_path, rotation, scale, has_rotation, has_scale
+FROM usd_xforms('test/data/transforms.usda')
+WHERE has_rotation OR has_scale
+ORDER BY prim_path;
+----
+/World/Rotated	[10.0, 20.0, 30.0]	[1.0, 1.0, 1.0]	true	false
+/World/Scaled	[0.0, 0.0, 0.0]	[2.0, 2.0, 2.0]	false	true
+
+# resetXformStack ignores the ancestors' transforms
+query IIII
+SELECT prim_path, resets_xform_stack, xform_op_order, local_matrix[13:15]
+FROM usd_xforms('test/data/transforms.usda')
+WHERE prim_path = '/World/Group/Detached';
+----
+/World/Group/Detached	true	[!resetXformStack!, 'xformOp:translate']	[1.0, 1.0, 1.0]
+
+# Matrices are row-major DOUBLE[16] with the translation in elements 13 to 15
+query II
+SELECT world_matrix, world_matrix[13:15] FROM usd_xforms('test/data/transforms.usda') WHERE prim_path = '/World/Matrix';
+----
+[1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 7.0, 8.0, 9.0, 1.0]	[7.0, 8.0, 9.0]
+
+query II
+SELECT local_matrix[13:15], world_matrix[13:15] FROM usd_xforms('test/data/transforms.usda') WHERE prim_path = '/World/Group/Child_1';
+----
+[0.0, 0.0, 5.0]	[100.0, 0.0, 5.0]
+
+# Time samples
+query II
+SELECT x, time_varying FROM usd_xforms('test/data/transforms.usda') WHERE prim_path = '/World/Animated';
+----
+0.0	true
+
+query I
+SELECT x FROM usd_xforms('test/data/transforms.usda', time := 5) WHERE prim_path = '/World/Animated';
+----
+5.0
+
+# Prims that are not xformable have no row
+query I
+SELECT count(*) FROM usd_xforms('test/data/transforms.usda') WHERE prim_path = '/World/Plain';
+----
+0
+
+# Proximity analysis: nearest anchor for each object
+query III
+SELECT o.prim_path, a.prim_path, round(sqrt((o.x - a.x) ** 2 + (o.y - a.y) ** 2 + (o.z - a.z) ** 2), 2) AS distance
+FROM usd_xforms('test/data/transforms.usda') o, usd_xforms('test/data/transforms.usda') a
+WHERE o.prim_path LIKE '/World/Object_%' AND a.prim_path = '/World/Anchor'
+ORDER BY o.prim_path;
+----
+/World/Object_A	/World/Anchor	5.0
+/World/Object_B	/World/Anchor	7.07
+/World/Object_C	/World/Anchor	7.07

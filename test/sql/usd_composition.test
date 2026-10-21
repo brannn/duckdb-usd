@@ -1,0 +1,98 @@
+# name: test/sql/usd_composition.test
+# description: instancing, payloads, sublayers, variants and composition errors
+# group: [sql]
+
+require usd
+
+# Instances are visited, their contents (instance proxies) are not
+query IIII
+SELECT prim_path, instanceable, instance, instance_proxy FROM usd_prims('test/data/composition.usda');
+----
+/Plant	false	false	false
+/Plant/FromSublayer	false	false	false
+/Plant/Module_1	true	true	false
+/Plant/Module_2	true	true	false
+/Plant/Configurable	false	false	false
+/Plant/Payloaded	false	false	false
+/Plant/Payloaded/Box	false	false	false
+/Plant/Broken	false	false	false
+
+query I
+SELECT prim_path FROM usd_prims('test/data/composition.usda', instance_proxies := true) WHERE instance_proxy;
+----
+/Plant/Module_1/Body
+/Plant/Module_1/Lamp
+/Plant/Module_2/Body
+/Plant/Module_2/Lamp
+
+# Instance proxies have world transforms of their own
+query IIII
+SELECT prim_path, x, y, z
+FROM usd_xforms('test/data/composition.usda', instance_proxies := true)
+WHERE prim_path LIKE '%/Body'
+ORDER BY prim_path;
+----
+/Plant/Module_1/Body	0.0	0.0	0.0
+/Plant/Module_2/Body	4.0	0.0	0.0
+
+# Payloads are loaded by default
+query III
+SELECT prim_path, has_payload, loaded FROM usd_prims('test/data/composition.usda') WHERE prim_path LIKE '/Plant/Payloaded%';
+----
+/Plant/Payloaded	true	true
+/Plant/Payloaded/Box	false	true
+
+query III
+SELECT prim_path, has_payload, loaded
+FROM usd_prims('test/data/composition.usda', load_payloads := false)
+WHERE prim_path LIKE '/Plant/Payloaded%';
+----
+/Plant/Payloaded	true	false
+
+# Variant sets, with the selection (if any) and the available variants
+query IIII
+SELECT prim_path, variant_set, selection, variants FROM usd_variants('test/data/composition.usda') ORDER BY variant_set;
+----
+/Plant/Configurable	finish	NULL	[gloss, matte]
+/Plant/Configurable	size	large	[large, small]
+
+# The selected variant's opinions are composed
+query I
+SELECT value::DOUBLE FROM usd_properties('test/data/composition.usda') WHERE prim_path = '/Plant/Configurable' AND property_name = 'size';
+----
+3.0
+
+# The broken reference is reported as a composition error
+query II
+SELECT error_type, prim_path FROM usd_composition_errors('test/data/composition.usda');
+----
+InvalidAssetPath	/Plant/Broken
+
+query I
+SELECT message LIKE '%missing_asset.usda%' FROM usd_composition_errors('test/data/composition.usda');
+----
+true
+
+query I
+SELECT count(*) FROM usd_composition_errors('test/data/scene.usda');
+----
+0
+
+# Every layer the stage uses, root first (the session layer is not included)
+query IIIII
+SELECT parse_filename(layer_identifier), format, is_root, sublayers, default_prim
+FROM usd_layers('test/data/composition.usda');
+----
+composition.usda	usda	true	[./composition_sublayer.usda]	Plant
+composition_payload.usda	usda	false	[]	Equipment
+composition_sublayer.usda	usda	false	[]	NULL
+
+query I
+SELECT bool_and(resolved_path LIKE '%/test/data/%') FROM usd_layers('test/data/composition.usda');
+----
+true
+
+query I
+SELECT documentation FROM usd_layers('test/data/composition.usda') WHERE NOT is_root AND documentation IS NOT NULL;
+----
+Sublayer of composition.usda

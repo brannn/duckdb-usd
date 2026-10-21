@@ -1,0 +1,10 @@
+#usda 1.0
+(
+    doc = "References a file outside its own directory that does not exist, for the allowed_directories tests"
+)
+
+def Xform "Imported" (
+    references = @../does_not_exist.usda@
+)
+{
+}

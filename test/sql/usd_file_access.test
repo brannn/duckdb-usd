@@ -1,0 +1,86 @@
+# name: test/sql/usd_file_access.test
+# description: DuckDB's file access settings apply to USD files and to the layers they compose
+# group: [sql]
+
+require usd
+
+# Cache stages before restricting access: they must be checked again when they are used
+query I
+SELECT count(*) FROM usd_prims('test/data/restricted/outside_reference.usda');
+----
+9
+
+query I
+SELECT count(*) > 0 FROM usd_prims('test/data/scene.usda');
+----
+true
+
+# Value clips are read from the clip file
+query I
+SELECT value::DOUBLE FROM usd_properties('test/data/restricted/outside_clips.usda', time := 2) WHERE property_name = 'reading';
+----
+43.0
+
+statement ok
+CALL enable_logging(level := 'debug', storage := 'memory');
+
+statement ok
+SET allowed_directories = ['test/data/restricted/'];
+
+statement ok
+SET enable_external_access = false;
+
+query I
+SELECT count(*) FROM usd_prims('test/data/restricted/self_contained.usda');
+----
+2
+
+statement error
+SELECT * FROM usd_prims('test/data/scene.usda');
+----
+file system operations are disabled by configuration
+
+# A file inside the allowed directory cannot pull in layers from outside it
+statement error
+SELECT * FROM usd_prims('test/data/restricted/outside_reference.usda');
+----
+file system operations are disabled by configuration
+
+# A file outside the allowed directory is refused before USD reads it: USD's errors (which quote the file) are not
+# reported, and a missing file is refused the same way as one that exists
+statement error
+SELECT * FROM usd_prims('test/data/restricted/outside_malformed.usda');
+----
+malformed.usda" - file system operations are disabled by configuration
+
+statement error
+SELECT * FROM usd_composition_errors('test/data/restricted/outside_malformed.usda');
+----
+malformed.usda" - file system operations are disabled by configuration
+
+statement error
+SELECT * FROM usd_prims('test/data/restricted/outside_missing.usda');
+----
+does_not_exist.usda" - file system operations are disabled by configuration
+
+query I
+SELECT count(*) FROM duckdb_logs WHERE type = 'usd' AND message LIKE '%Expected }%';
+----
+0
+
+# Value clips outside the allowed directory are refused too: in a stage cached before access was restricted, and in
+# one opened since (other options)
+statement error
+SELECT * FROM usd_properties('test/data/restricted/outside_clips.usda', time := 2);
+----
+clip_values.usda" - file system operations are disabled by configuration
+
+statement error
+SELECT * FROM usd_properties('test/data/restricted/outside_clips.usda', time := 2, load_payloads := false);
+----
+clip_values.usda" - file system operations are disabled by configuration
+
+statement error
+SELECT * FROM usd_time_samples('test/data/restricted/outside_clips.usda', load_payloads := false);
+----
+clip_values.usda" - file system operations are disabled by configuration

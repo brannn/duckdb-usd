@@ -1,0 +1,106 @@
+# name: test/sql/usd_prims.test
+# description: usd_prims - prim metadata and the traversal options shared by all scans
+# group: [sql]
+
+require usd
+
+query IIIIIIIII
+SELECT prim_path, parent_path, name, depth, prim_type, kind, specifier, active, defined
+FROM usd_prims('test/data/scene.usda');
+----
+/Site	/	Site	1	Xform	assembly	def	true	true
+/Site/Zone_A	/Site	Zone_A	2	Xform	group	def	true	true
+/Site/Zone_A/Unit_001	/Site/Zone_A	Unit_001	3	Cube	component	def	true	true
+/Site/Zone_A/Probe	/Site/Zone_A	Probe	3	Sphere	NULL	def	true	true
+/Site/Zone_A/Marker	/Site/Zone_A	Marker	3	NULL	NULL	def	true	true
+/Site/Zone_B	/Site	Zone_B	2	Xform	group	def	true	true
+/Site/Zone_B/Pipe	/Site/Zone_B	Pipe	3	Cylinder	NULL	def	true	true
+/Site/Zone_B/Retired	/Site/Zone_B	Retired	3	Xform	NULL	def	false	true
+
+# Inactive prims are visited (their children are not composed), so "active" is meaningful
+query I
+SELECT prim_path FROM usd_prims('test/data/scene.usda') WHERE NOT active;
+----
+/Site/Zone_B/Retired
+
+query I
+SELECT count(*) FROM usd_prims('test/data/scene.usda', active_only := true);
+----
+7
+
+# Abstract (class) and undefined (over-only) prims are skipped by default
+query II
+SELECT prim_path, specifier
+FROM usd_prims('test/data/scene.usda', include_abstract := true, include_undefined := true)
+WHERE abstract OR NOT defined
+ORDER BY prim_path;
+----
+/Site/Annotations	over
+/Site/_UnitTemplate	class
+/Site/_UnitTemplate/Body	def
+
+query I
+SELECT count(*) FROM usd_prims('test/data/scene.usda', include_abstract := true);
+----
+10
+
+query I
+SELECT count(*) FROM usd_prims('test/data/scene.usda', include_undefined := true);
+----
+9
+
+query II
+SELECT prim_path, applied_schemas FROM usd_prims('test/data/scene.usda') WHERE len(applied_schemas) > 0;
+----
+/Site/Zone_A/Unit_001	[MaterialBindingAPI]
+
+# custom_data and asset_info hold only authored metadata (not the documentation schemas add)
+query III
+SELECT prim_path, custom_data.owner::VARCHAR, custom_data.floor_count::INTEGER
+FROM usd_prims('test/data/scene.usda')
+WHERE custom_data IS NOT NULL;
+----
+/Site	facilities	2
+
+query II
+SELECT prim_path, asset_info.identifier::VARCHAR
+FROM usd_prims('test/data/scene.usda')
+WHERE asset_info IS NOT NULL;
+----
+/Site/Zone_A/Unit_001	unit-001
+
+# root restricts the scan (and composition) to a subtree, including the root itself
+query I
+SELECT prim_path FROM usd_prims('test/data/scene.usda', root := '/Site/Zone_A');
+----
+/Site/Zone_A
+/Site/Zone_A/Unit_001
+/Site/Zone_A/Probe
+/Site/Zone_A/Marker
+
+# a root that does not exist in the file scans nothing
+query I
+SELECT count(*) FROM usd_prims('test/data/scene.usda', root := '/Elsewhere');
+----
+0
+
+statement error
+SELECT * FROM usd_prims('test/data/scene.usda', root := 'Site');
+----
+must be an absolute prim path
+
+# group and filter like any other table
+query II
+SELECT prim_type, count(*) FROM usd_prims('test/data/scene.usda') GROUP BY ALL ORDER BY ALL;
+----
+Cube	1
+Cylinder	1
+Sphere	1
+Xform	4
+NULL	1
+
+# querying a USD file directly reads its prims
+query I
+SELECT count(*) FROM 'test/data/scene.usda';
+----
+8

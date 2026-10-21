@@ -1,0 +1,262 @@
+# name: test/sql/usd_stage_cache.test
+# description: stages kept between queries are opened again when a file they read changes
+# group: [sql]
+
+require usd
+
+# The scenes are written with COPY, one line per row. Every rewrite changes the size of the file, so that the change
+# is seen even when the file system's modification time has not moved yet.
+
+# A root layer that references a child layer
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "Child" {}')))
+TO '{TEST_DIR}/cache_child.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "Root" {}'), ('def Xform "Ref" (references = @./cache_child.usda@</Child>) {}')))
+TO '{TEST_DIR}/cache_root.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_root.usda');
+----
+/Ref /Root
+
+# The stage is cached
+query I
+SELECT memory_usage_bytes > 0 FROM duckdb_memory() WHERE tag = 'OBJECT_CACHE';
+----
+true
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_root.usda');
+----
+/Ref /Root
+
+# The root layer changes
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "Root" {'), ('def Xform "Added" {}'), ('}'), ('def Xform "Ref" (references = @./cache_child.usda@</Child>) {}')))
+TO '{TEST_DIR}/cache_root.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_root.usda');
+----
+/Ref /Root /Root/Added
+
+# The referenced layer changes
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "Child" {'), ('def Xform "Inner" {}'), ('}')))
+TO '{TEST_DIR}/cache_child.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_root.usda');
+----
+/Ref /Ref/Inner /Root /Root/Added
+
+# The referenced layer changes again and is opened on its own: USD shares a loaded layer between stages, so the
+# cached root stage must let go of its old copy
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "Child" {'), ('def Xform "Inner" {}'), ('def Xform "Second" {}'), ('}')))
+TO '{TEST_DIR}/cache_child.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_child.usda');
+----
+/Child /Child/Inner /Child/Second
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_root.usda');
+----
+/Ref /Ref/Inner /Ref/Second /Root /Root/Added
+
+# Other options compose another stage, cached separately
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_root.usda', root := '/Ref');
+----
+/Ref /Ref/Inner /Ref/Second
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "Child" {'), ('def Xform "Third" {}'), ('}')))
+TO '{TEST_DIR}/cache_child.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_root.usda', root := '/Ref');
+----
+/Ref /Ref/Third
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_root.usda');
+----
+/Ref /Ref/Third /Root /Root/Added
+
+# A missing reference that appears
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "Root" (references = @./cache_later.usda@</Later>) {}')))
+TO '{TEST_DIR}/cache_missing.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT count(*) FROM usd_composition_errors('{TEST_DIR}/cache_missing.usda');
+----
+1
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "Later" {'), ('def Xform "Inside" {}'), ('}')))
+TO '{TEST_DIR}/cache_later.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT count(*) FROM usd_composition_errors('{TEST_DIR}/cache_missing.usda');
+----
+0
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_missing.usda');
+----
+/Root /Root/Inside
+
+# A missing sublayer that appears
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('(subLayers = [@./cache_sublayer.usda@])'), ('def Xform "Root" {}')))
+TO '{TEST_DIR}/cache_layered.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_layered.usda');
+----
+/Root
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "FromSublayer" {}')))
+TO '{TEST_DIR}/cache_sublayer.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_layered.usda');
+----
+/FromSublayer /Root
+
+# A payload that USD cannot read, then fixed
+
+statement ok
+COPY (FROM (VALUES ('not a USD file')))
+TO '{TEST_DIR}/cache_unreadable.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "Root" (payload = @./cache_unreadable.usda@</Payload>) {}')))
+TO '{TEST_DIR}/cache_payload.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT count(*) FROM usd_composition_errors('{TEST_DIR}/cache_payload.usda');
+----
+1
+
+statement ok
+COPY (FROM (VALUES ('#usda 1.0'), ('def Xform "Payload" {'), ('def Xform "Loaded" {}'), ('}')))
+TO '{TEST_DIR}/cache_unreadable.usda' (FORMAT csv, HEADER false, QUOTE '', ESCAPE '');
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_payload.usda');
+----
+/Root /Root/Loaded
+
+# A cached stage with composition errors warns in every query that uses it
+
+statement ok
+CALL enable_logging(level := 'warning', storage := 'memory');
+
+query I
+SELECT count(*) FROM usd_prims('test/data/composition.usda');
+----
+8
+
+query I
+SELECT count(*) FROM usd_prims('test/data/composition.usda');
+----
+8
+
+query I
+SELECT count(*) FROM duckdb_logs WHERE type = 'usd' AND message LIKE '%has 1 composition error(s)%';
+----
+2
+
+# Turning the cache off frees the cached stages
+
+statement ok
+SET usd_stage_cache = false;
+
+query I
+SELECT memory_usage_bytes FROM duckdb_memory() WHERE tag = 'OBJECT_CACHE';
+----
+0
+
+query I
+SELECT string_agg(prim_path, ' ' ORDER BY prim_path) FROM usd_prims('{TEST_DIR}/cache_root.usda');
+----
+/Ref /Ref/Third /Root /Root/Added
+
+query I
+SELECT memory_usage_bytes FROM duckdb_memory() WHERE tag = 'OBJECT_CACHE';
+----
+0
+
+statement error
+SET usd_stage_cache = NULL;
+----
+The "usd_stage_cache" setting cannot be NULL
+
+statement ok
+RESET usd_stage_cache;
+
+query I
+SELECT current_setting('usd_stage_cache');
+----
+true
+
+# Cached stages take at most half of memory_limit: a larger stage is read without being cached
+
+statement ok
+SET memory_limit = '10MB';
+
+query I
+SELECT count(*) FROM usd_prims('test/data/grid.usda');
+----
+3051
+
+query I
+SELECT memory_usage_bytes FROM duckdb_memory() WHERE tag = 'OBJECT_CACHE';
+----
+0
+
+query I
+SELECT count(*) FROM usd_prims('test/data/scene.usda');
+----
+8
+
+query I
+SELECT memory_usage_bytes > 0 FROM duckdb_memory() WHERE tag = 'OBJECT_CACHE';
+----
+true
+
+statement ok
+RESET memory_limit;
+
+# Connections read one cached stage at once, while others drop the cached stages
+
+concurrentloop i 0 8
+
+loop j 0 5
+
+query I
+SELECT count(*) FROM usd_prims('test/data/grid.usda');
+----
+3051
+
+statement ok
+SET usd_stage_cache = {i} % 2 = 0 OR {j} < 3;
+
+endloop
+
+endloop

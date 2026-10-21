@@ -182,9 +182,10 @@ in `test/data/`, with generic names.
 
 ## Continuous integration
 
-`.github/workflows/MainDistributionPipeline.yml` builds and tests the extension on DuckDB's extension CI for Linux
-(x86-64 and arm64) and macOS (arm64). Windows is not a target; WebAssembly and musl Linux are excluded, as OpenUSD does
-not build there.
+`.github/workflows/MainDistributionPipeline.yml` builds the extension on DuckDB's extension CI for Linux (x86-64 and
+arm64) and macOS (arm64), and runs the tests on Linux x86-64 and macOS. Windows is not a target; WebAssembly and musl
+Linux are excluded, as OpenUSD does not build there. CI builds against DuckDB's 2.0 release branch, and fails if the
+tests are skipped because the extension did not load.
 
 Every CI build compiles OpenUSD and DuckDB from source, so CI runs sparingly:
 
@@ -193,7 +194,7 @@ Every CI build compiles OpenUSD and DuckDB from source, so CI runs sparingly:
   `main` speed up every pull request.
 - **Manual runs** (*Actions → Main Extension Distribution Pipeline → Run workflow*) build every platform. Use one to
   check macOS or Linux arm64 before merging.
-- **Documentation-only changes** (`*.md`, `docs/`, `LICENSE`) do not run CI.
+- **Documentation-only changes** (`*.md`, `docs/`, `LICENSE`, `THIRD_PARTY_NOTICES.txt`) do not run CI.
 - **Pushes to other branches** do not run CI; open a pull request.
 - **Formatting** is checked first, without a build. The build starts only once the format check passes, so run
   `make format-fix` before pushing.

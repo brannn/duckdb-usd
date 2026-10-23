@@ -71,16 +71,17 @@ DuckDB's spatial extension.
 
 ## Installation
 
-The extension is not yet published to the DuckDB community extension repository. Build it from source (below) and
-load it with:
+The extension is published in DuckDB's [community extensions](https://duckdb.org/community_extensions/):
 
 ```sql
-LOAD 'build/release/extension/usd/usd.duckdb_extension';
+INSTALL usd FROM community;
+LOAD usd;
 ```
 
-DuckDB only loads unsigned extensions when started with `-unsigned` (CLI) or
-`allow_unsigned_extensions` (clients). A build loads only into the DuckDB version it was built against: the
-`build/release/duckdb` shell next to it, or a client of the same DuckDB release.
+A build from source (below) loads with `LOAD 'build/release/extension/usd/usd.duckdb_extension';`. DuckDB only
+loads unsigned extensions when started with `-unsigned` (CLI) or `allow_unsigned_extensions` (clients). A build
+loads only into the DuckDB version it was built against: the `build/release/duckdb` shell next to it, or a client
+of the same DuckDB release.
 
 ## How it works
 

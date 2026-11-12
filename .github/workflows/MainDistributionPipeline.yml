@@ -25,7 +25,7 @@ concurrency:
 jobs:
   code-quality-check:
     name: Code quality
-    uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@{"message":"Not Found","documentation_url":"https://docs.github.com/rest/git/refs#get-a-reference","status":"404"} # v2.0-cyanoptera
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@c286b12cee2aa16b714e76d0b46e530fcdb6dc05 # v2.0-cyanoptera
     with:
       duckdb_version: v2.0-cyanoptera
       ci_tools_version: v2.0-cyanoptera
@@ -38,7 +38,7 @@ jobs:
     needs: code-quality-check
     # DuckDB's 2.0 release branch, not the v2.0.0 tag: the tests run on a prebuilt DuckDB when one is staged for the
     # commit, and the one staged for v2.0.0 is a development build, which does not load an extension built at the tag
-    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@{"message":"Not Found","documentation_url":"https://docs.github.com/rest/git/refs#get-a-reference","status":"404"} # v2.0-cyanoptera
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@c286b12cee2aa16b714e76d0b46e530fcdb6dc05 # v2.0-cyanoptera
     with:
       duckdb_version: v2.0-cyanoptera
       ci_tools_version: v2.0-cyanoptera
